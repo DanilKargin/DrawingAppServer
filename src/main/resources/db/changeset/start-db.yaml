@@ -1,0 +1,35 @@
+databaseChangeLog:
+  - changeSet:
+      id: start-db #текстовый идентификатор (Обязателен)
+      author: ghost # автор (Обязателен)
+      changes:
+        - createTable: # создаем новую таблицу
+            tableName: users
+            columns: # объявления колонок
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: email
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+                    unique : true
+              - column:
+                  name: password
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: verificationToken
+                  type: varchar(200)
+              - column:
+                  name: tokenExpiryDate
+                  type: timestamp
+        - addDefaultValue:
+            tableName: users
+            columnName: id
+            defaultValueComputed: gen_random_uuid()
