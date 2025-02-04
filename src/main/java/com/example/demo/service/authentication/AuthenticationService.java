@@ -1,5 +1,6 @@
 package com.example.demo.service.authentication;
 
+import com.example.demo.controller.domain.request.GuestSignInRequest;
 import com.example.demo.controller.domain.request.SignInRequest;
 import com.example.demo.controller.domain.request.SignUpRequest;
 import com.example.demo.controller.domain.response.MessageResponse;
@@ -31,7 +32,7 @@ public class AuthenticationService {
     private static final int TOKEN_VALIDITY_HOURS = 1;
 
     @Transactional
-    public String signUp(SignUpRequest request) {
+    public MessageResponse signUp(SignUpRequest request) {
 
         try {
             var checkUser = userService.findByEmail(request.getEmail());
@@ -46,19 +47,54 @@ public class AuthenticationService {
             generateVerificationToken(user);
             userService.create(user);
 
-            var jwt = jwtService.generateToken(user);
+            Thread emailSendThread = new Thread(new Runnable()
+            {
+                public void run() //Этот метод будет выполняться в побочном потоке
+                {
+                    try {
+                        sendVerificationEmail(user);
+                    } catch (MessagingException e) {
 
-            sendVerificationEmail(user);
-            return "Письмо с подтверждением регистрации отправлена на почту";
+                    }
+                }
+            });
+            emailSendThread.start();
+            return new MessageResponse("Письмо с подтверждением регистрации отправлена на почту", "");
         }catch (Exception e){
-            return e.getMessage();
+            return new MessageResponse("", e.getMessage());
+        }
+    }
+
+    public MessageResponse guestSignIn(GuestSignInRequest request){
+        var user = userService.findByDeviceId(request.getDeviceId());
+        if(user.isPresent()){
+            if(user.get().getRole() == UserRole.GUEST){
+                var jwt = jwtService.generateToken(user.get());
+                return new MessageResponse(jwt, "");
+            }else{
+                return new MessageResponse("", "В доступе отказано!");
+            }
+        }else{
+            var guest = User.builder()
+                    .role(UserRole.GUEST)
+                    .email("Guest-" + UUID.randomUUID())
+                    .deviceId(request.getDeviceId())
+                    .build();
+
+            var createUser = userService.create(guest);
+            if(createUser != null) {
+                var jwt = jwtService.generateToken(createUser);
+                return new MessageResponse(jwt, "");
+            }else {
+                return new MessageResponse("", "Неизвестная ошибка!");
+            }
         }
     }
 
     public MessageResponse signIn(SignInRequest request) {
         try {
             var checkUser = userService.findByEmail(request.getEmail());
-            if(checkUser.isPresent() && checkUser.get().getRole() == UserRole.NOT_CONFIRMED){
+            if(checkUser.isPresent() && checkUser.get().getRole() != UserRole.USER){
                 throw new UsernameNotFoundException("Пользователь с такой почтой не найден");
             }
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(

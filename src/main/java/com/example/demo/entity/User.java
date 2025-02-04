@@ -30,11 +30,14 @@ public class User implements UserDetails {
     @Column(name = "role", nullable = false)
     private UserRole role;
 
-    @Column(unique = true, nullable = false)
+    @Column(unique = true)
     private String email;
 
-    @Column(nullable = false)
+    @Column()
     private String password;
+
+    @Column(name="device_id", unique = true)
+    private String deviceId;
 
     @Column(name="verification_token")
     private String verificationToken;

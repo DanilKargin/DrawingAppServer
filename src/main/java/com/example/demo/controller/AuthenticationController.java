@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.controller.domain.request.GuestSignInRequest;
 import com.example.demo.controller.domain.request.SignInRequest;
 import com.example.demo.controller.domain.request.SignUpRequest;
 import com.example.demo.controller.domain.request.VerifyRequest;
@@ -22,13 +23,17 @@ public class AuthenticationController {
     private final UserService userService;
 
     @PostMapping("/sign-up")
-    public ResponseEntity<String> signUp(@RequestBody SignUpRequest request) {
+    public ResponseEntity<MessageResponse> signUp(@RequestBody SignUpRequest request) {
         return ResponseEntity.ok(authenticationService.signUp(request));
     }
 
     @PostMapping("/sign-in")
     public ResponseEntity<MessageResponse> signIn(@RequestBody SignInRequest request) {
         return ResponseEntity.ok(authenticationService.signIn(request));
+    }
+    @PostMapping("/sign-in-guest")
+    public ResponseEntity<MessageResponse> guestSignIn(@RequestBody GuestSignInRequest request){
+        return ResponseEntity.ok(authenticationService.guestSignIn(request));
     }
     @PutMapping("/verify")
     public ResponseEntity<MessageResponse> verifyEmail(@RequestBody VerifyRequest request) {

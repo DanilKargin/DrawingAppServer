@@ -3,9 +3,11 @@ package com.example.demo.service;
 import com.example.demo.controller.domain.request.VerifyRequest;
 import com.example.demo.controller.domain.response.MessageResponse;
 import com.example.demo.dto.UserDto;
+import com.example.demo.dto.UserProfileDto;
 import com.example.demo.entity.User;
 import com.example.demo.entity.enums.UserRole;
 import com.example.demo.repository.UserRepository;
+import com.example.demo.service.authentication.JwtService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -22,6 +24,7 @@ import java.util.UUID;
 public class UserService {
     private final UserRepository userRepository;
     private final UserProfileService userProfileService;
+
     public User save(User user) {
         return userRepository.save(user);
     }
@@ -29,9 +32,11 @@ public class UserService {
 
     public User create(User user) {
         if (userRepository.existsByEmail(user.getUsername())) {
-            throw new RuntimeException("Пользователь с таким именем уже существует");
+            throw new RuntimeException("Почта уже привязана к другому аккаунту.");
         }
-        return save(user);
+        var saveUser = save(user);
+        userProfileService.create(saveUser);
+        return saveUser;
     }
     @Transactional
     public User update(UserDto userDto){
@@ -42,7 +47,13 @@ public class UserService {
         return userRepository.save(currentUser);
     }
 
-
+    public UserProfileDto getUserProfile(){
+        var user = getCurrentUser();
+        return userProfileService.findByUser(user);
+    }
+    public Optional<User> findByDeviceId(String deviceId){
+        return userRepository.findByDeviceId(deviceId);
+    }
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email);
     }
@@ -67,6 +78,7 @@ public class UserService {
     public void deleteUser(User user){
         userRepository.delete(user);
     }
+
     public MessageResponse verifyEmail(VerifyRequest request) {
             Optional<User> userOpt = findByEmail(request.getEmail());
             if (userOpt.isPresent()) {
@@ -81,9 +93,10 @@ public class UserService {
                         user.setRole(UserRole.USER);
                         user.setVerificationToken(null);
                         user.setTokenExpiryDate(null);
+                        user.setDeviceId(null);
                         userRepository.save(user);
-                        userProfileService.create(user);
-                        return new MessageResponse("Почта успешно подтверждена!", "");
+
+                        return new MessageResponse("Почта успешно подтверждена", "");
                     }else{
                         return new MessageResponse("","Токен недействительный.");
                     }
@@ -94,4 +107,5 @@ public class UserService {
                 return new MessageResponse("", "Пользователя с такой почтой не существует.");
             }
     }
+
 }
