@@ -26,7 +26,7 @@ public class EmailService {
 
         helper.setTo(to);
         helper.setSubject(subject);
-        helper.setText(htmlContent, true);
+        helper.setText(htmlContent.replace("{{EMAIL}}", email), true);
         helper.setFrom(email);
 
         mailSender.send(message);

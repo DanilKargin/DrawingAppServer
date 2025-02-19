@@ -41,4 +41,5 @@ public class UserProfileService {
         return new UserProfileDto(userRepository.findByUser(user)
                 .orElseThrow(() -> new UsernameNotFoundException("Данные пользователя не найдены")));
     }
+
 }

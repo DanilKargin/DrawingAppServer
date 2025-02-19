@@ -1,8 +1,6 @@
 package com.example.demo.service.authentication;
 
-import com.example.demo.controller.domain.request.GuestSignInRequest;
-import com.example.demo.controller.domain.request.SignInRequest;
-import com.example.demo.controller.domain.request.SignUpRequest;
+import com.example.demo.controller.domain.request.*;
 import com.example.demo.controller.domain.response.MessageResponse;
 import com.example.demo.entity.User;
 import com.example.demo.entity.enums.UserRole;
@@ -10,6 +8,8 @@ import com.example.demo.service.UserService;
 import com.example.demo.service.email.EmailService;
 import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -17,6 +17,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.Random;
 import java.util.UUID;
@@ -24,20 +28,21 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
+    private final ResourceLoader resourceLoader;
     private final UserService userService;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
-    private static final int TOKEN_VALIDITY_HOURS = 1;
+    private static final int TOKEN_VALIDITY_MINUTES = 15;
 
     @Transactional
     public MessageResponse signUp(SignUpRequest request) {
 
         try {
-            var checkUser = userService.findByEmail(request.getEmail());
-            if(checkUser.isPresent() && checkUser.get().getRole() == UserRole.NOT_CONFIRMED){
-                userService.deleteUser(checkUser.get());
+            var checkUser = userService.getByUsername(request.getEmail());
+            if(checkUser.getRole() == UserRole.NOT_CONFIRMED){
+                userService.deleteUser(checkUser);
             }
             var user = User.builder()
                     .email(request.getEmail())
@@ -49,10 +54,10 @@ public class AuthenticationService {
 
             Thread emailSendThread = new Thread(new Runnable()
             {
-                public void run() //Этот метод будет выполняться в побочном потоке
+                public void run()
                 {
                     try {
-                        sendVerificationEmail(user);
+                        sendVerificationEmail(user, "Подтверждение регистрации");
                     } catch (MessagingException e) {
 
                     }
@@ -93,8 +98,8 @@ public class AuthenticationService {
 
     public MessageResponse signIn(SignInRequest request) {
         try {
-            var checkUser = userService.findByEmail(request.getEmail());
-            if(checkUser.isPresent() && checkUser.get().getRole() != UserRole.USER){
+            var checkUser = userService.getByUsername(request.getEmail());
+            if(checkUser.getRole() != UserRole.USER){
                 throw new UsernameNotFoundException("Пользователь с такой почтой не найден");
             }
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
@@ -111,60 +116,97 @@ public class AuthenticationService {
             return new MessageResponse("", e.getMessage());
         }
     }
-    public String regenerateToken(User user){
+    public MessageResponse verifyEmail(VerifyRequest request) {
         try {
-            generateVerificationToken(user);
+            var user = userService.getByUsername(request.getEmail());
+            checkUserSecurityToken(request.getToken(), user);
+            user.setRole(UserRole.USER);
+            user.setVerificationToken(null);
+            user.setTokenExpiryDate(null);
             userService.save(user);
-            sendVerificationEmail(user);
-            return "Письмо с подтверждением регистрации отправлено на почту";
-        }catch (Exception e){
-            return e.getMessage();
+
+            return new MessageResponse("Почта успешно подтверждена", "");
+        }catch(Exception e){
+            return new MessageResponse("", e.getMessage());
         }
     }
+    public MessageResponse sendSecurityToken(VerifyRequest request){
+        try {
+            User user = userService.getByUsername(request.getEmail());
+            generateVerificationToken(user);
+            userService.save(user);
+            Thread emailSendThread = new Thread(new Runnable()
+            {
+                public void run()
+                {
+                    try {
+                        sendVerificationEmail(user, "Код безопасности");
+                    } catch (MessagingException e) {
 
+                    }
+                }
+            });
+            emailSendThread.start();
+            return new MessageResponse("Письмо с кодом безопасности отправлено на почту","");
+        }catch (Exception e){
+            return new MessageResponse("", e.getMessage());
+        }
+    }
+    public MessageResponse checkToken(String token, String email){
+        try{
+            User user = userService.getByUsername(email);
+            return checkUserSecurityToken(token, user);
+        }catch (Exception e){
+            return new MessageResponse("", e.getMessage());
+        }
+    }
+    public MessageResponse changePassword(ChangePasswordRequest request){
+        try {
+            User user = userService.getByUsername(request.getEmail());
+            checkUserSecurityToken(request.getToken(), user);
+            if(!request.getPassword().isEmpty()){
+                user.setPassword(passwordEncoder.encode(request.getPassword()));
+                user.setTokenExpiryDate(null);
+                user.setVerificationToken(null);
+                userService.save(user);
+                return new MessageResponse("Пароль успешно изменён", "");
+            }else{
+                return new MessageResponse("", "Пароль не может быть установлен");
+            }
+        }catch (Exception e){
+            return new MessageResponse("", e.getMessage());
+        }
+    }
+    private MessageResponse checkUserSecurityToken(String token, User user){
+        if (user.getTokenExpiryDate() != null && user.getTokenExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Токен истёк. Пожалуйста, запросите новый.");
+        } else if (user.getTokenExpiryDate() != null) {
+            if (user.getVerificationToken().equals(token)) {
+                return new MessageResponse(token, "");
+            } else {
+                throw new RuntimeException("Токен недействительный.");
+            }
+        } else {
+            throw new RuntimeException("Неизвестная ошибка!");
+        }
+    }
     private void generateVerificationToken(User user) {
         Random r = new Random( System.currentTimeMillis());
         Integer token = 10000 + r.nextInt(20000);
         user.setVerificationToken(token.toString());
-        user.setTokenExpiryDate(LocalDateTime.now().plusHours(TOKEN_VALIDITY_HOURS));
+        user.setTokenExpiryDate(LocalDateTime.now().plusMinutes(TOKEN_VALIDITY_MINUTES));
     }
-    private void sendVerificationEmail(User user) throws MessagingException {
-        String htmlContent = buildEmail(user.getVerificationToken()); // Создаем HTML-контент письма
-        emailService.sendHtmlEmail(user.getEmail(), "Подтверждение регистрации", htmlContent);
+    private void sendVerificationEmail(User user, String title) throws MessagingException {
+        String htmlContent = buildEmail(user.getVerificationToken());
+        emailService.sendHtmlEmail(user.getEmail(), title, htmlContent);
     }
     private String buildEmail(String verificationToken) {
-        return """
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <style>
-                    .button {
-                        background-color: #4CAF50;
-                        border: none;
-                        color: white;
-                        padding: 15px 32px;
-                        text-align: center;
-                        text-decoration: none;
-                        display: inline-block;
-                        font-size: 16px;
-                        margin: 4px 2px;
-                        cursor: pointer;
-                    }
-                    .container {
-                        font-family: Arial, sans-serif;
-                        padding: 20px;
-                        text-align: center;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h2>Подтверждение регистрации в игровом приложении DrawingBattle</h2>
-                    <p>Спасибо за регистрацию. Ваш код подтверждения: <b>%s</b></p>
-                    <p>Если вы не регистрировались в DrawingBattle, просто закройте данное сообщение.</p>
-                </div>
-            </body>
-            </html>
-            """.formatted(verificationToken);
+        try {
+            Resource resource = resourceLoader.getResource("classpath:templates/email-token-page.html");
+            String htmlContent = Files.readString(Path.of(resource.getURI()), StandardCharsets.UTF_8);
+            return htmlContent.replace("{{TOKEN}}", verificationToken);
+        } catch (IOException e) {
+            throw new RuntimeException("Ошибка при загрузке email-шаблона", e);
+        }
     }
 }

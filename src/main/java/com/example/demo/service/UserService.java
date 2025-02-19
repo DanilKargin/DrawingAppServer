@@ -1,13 +1,9 @@
 package com.example.demo.service;
 
-import com.example.demo.controller.domain.request.VerifyRequest;
-import com.example.demo.controller.domain.response.MessageResponse;
 import com.example.demo.dto.UserDto;
 import com.example.demo.dto.UserProfileDto;
 import com.example.demo.entity.User;
-import com.example.demo.entity.enums.UserRole;
 import com.example.demo.repository.UserRepository;
-import com.example.demo.service.authentication.JwtService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -54,9 +50,6 @@ public class UserService {
     public Optional<User> findByDeviceId(String deviceId){
         return userRepository.findByDeviceId(deviceId);
     }
-    public Optional<User> findByEmail(String email) {
-        return userRepository.findByEmail(email);
-    }
 
     public User getByUsername(String username) {
         return userRepository.findByEmail(username)
@@ -78,34 +71,4 @@ public class UserService {
     public void deleteUser(User user){
         userRepository.delete(user);
     }
-
-    public MessageResponse verifyEmail(VerifyRequest request) {
-            Optional<User> userOpt = findByEmail(request.getEmail());
-            if (userOpt.isPresent()) {
-                var user = userOpt.get();
-                if (user.getRole() != UserRole.NOT_CONFIRMED){
-                    return new MessageResponse("", "Пользователь уже подтвержден");
-                }
-                if (user.getTokenExpiryDate() != null && user.getTokenExpiryDate().isBefore(LocalDateTime.now())) {
-                    return new MessageResponse("", "Токен истёк. Пожалуйста, запросите новый.");
-                }else if(user.getTokenExpiryDate() != null){
-                    if(user.getVerificationToken().equals(request.getToken())){
-                        user.setRole(UserRole.USER);
-                        user.setVerificationToken(null);
-                        user.setTokenExpiryDate(null);
-                        user.setDeviceId(null);
-                        userRepository.save(user);
-
-                        return new MessageResponse("Почта успешно подтверждена", "");
-                    }else{
-                        return new MessageResponse("","Токен недействительный.");
-                    }
-                }else{
-                    return new MessageResponse("", "Неизвестная ошибка!");
-                }
-            }else{
-                return new MessageResponse("", "Пользователя с такой почтой не существует.");
-            }
-    }
-
 }

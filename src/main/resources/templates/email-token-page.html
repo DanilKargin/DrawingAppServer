@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333333;
+        }
+        p {
+            color: #555555;
+            line-height: 1.6;
+        }
+        .token {
+            background-color: #e7f3fe;
+            border-left: 6px solid #2196F3;
+            padding: 10px 15px;
+            margin: 20px 0;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            border-radius: 4px;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 0.8em;
+            color: #888888;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>DrawingBattle</h1>
+    <p>Дорогой пользователь,</p>
+    <p>Мы получили запрос на выполнение действий, связанных с безопасностью вашей учетной записи. Чтобы продолжить, пожалуйста, найдите свой токен безопасности ниже:</p>
+
+    <div class="token">
+        <strong>Ваш токен безопасности:</strong> <span id="securityToken">{{TOKEN}}</span>
+    </div>
+
+    <p>Пожалуйста, введите этот токен в соответствующее поле в нашем приложении, чтобы завершить свой запрос. Этот токен действителен в течение 15 минут и должен храниться в тайне.</p>
+
+    <p>Если вы не запрашивали это действие, пожалуйста, проигнорируйте это электронное письмо.</p>
+
+    <div class="footer">
+        <p>С уважением,<br>DrawingBattle</p>
+        <p>Если у вас есть вопросы, свяжитесь с нами <a href="mailto:{{EMAIL}}">{{EMAIL}}</a></p>
+    </div>
+</div>
+</body>
+</html>

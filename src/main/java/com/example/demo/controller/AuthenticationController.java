@@ -1,9 +1,6 @@
 package com.example.demo.controller;
 
-import com.example.demo.controller.domain.request.GuestSignInRequest;
-import com.example.demo.controller.domain.request.SignInRequest;
-import com.example.demo.controller.domain.request.SignUpRequest;
-import com.example.demo.controller.domain.request.VerifyRequest;
+import com.example.demo.controller.domain.request.*;
 import com.example.demo.controller.domain.response.MessageResponse;
 import com.example.demo.entity.User;
 import com.example.demo.entity.enums.UserRole;
@@ -37,16 +34,18 @@ public class AuthenticationController {
     }
     @PutMapping("/verify")
     public ResponseEntity<MessageResponse> verifyEmail(@RequestBody VerifyRequest request) {
-        return ResponseEntity.ok(userService.verifyEmail(request));
+        return ResponseEntity.ok(authenticationService.verifyEmail(request));
     }
-    @PutMapping("/resend-token")
-    public ResponseEntity<MessageResponse> resendToken(@RequestBody VerifyRequest request) {
-        Optional<User> userOpt = userService.findByEmail(request.getEmail());
-        if (userOpt.isPresent() && userOpt.get().getRole() == UserRole.NOT_CONFIRMED) {
-            User user = userOpt.get();
-            return ResponseEntity.ok(new MessageResponse(authenticationService.regenerateToken(user), ""));
-        } else {
-            return ResponseEntity.ok(new MessageResponse("", "Пользователь не найден или уже подтвержден."));
-        }
+    @PutMapping("/send-token")
+    public ResponseEntity<MessageResponse> sendToken(@RequestBody VerifyRequest request) {
+        return ResponseEntity.ok(authenticationService.sendSecurityToken(request));
+    }
+    @GetMapping("/check-token")
+    public ResponseEntity<MessageResponse> checkToken(@RequestParam String token, @RequestParam String email){
+        return ResponseEntity.ok(authenticationService.checkToken(token, email));
+    }
+    @PutMapping("/change-password")
+    public ResponseEntity<MessageResponse> changePassword(@RequestBody ChangePasswordRequest request){
+        return ResponseEntity.ok(authenticationService.changePassword(request));
     }
 }
