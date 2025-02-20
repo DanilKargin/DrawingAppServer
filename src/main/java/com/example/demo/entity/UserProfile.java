@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -27,6 +28,9 @@ public class UserProfile {
 
     @Column(nullable = false)
     private int energy;
+
+    @Column(name="energy_time")
+    private LocalDateTime energyTime;
 
     @OneToOne
     @JoinColumn(name = "user_id", nullable = false)

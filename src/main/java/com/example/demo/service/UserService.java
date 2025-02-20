@@ -11,7 +11,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -42,27 +41,25 @@ public class UserService {
 
         return userRepository.save(currentUser);
     }
-
-    public UserProfileDto getUserProfile(){
-        var user = getCurrentUser();
-        return userProfileService.findByUser(user);
-    }
     public Optional<User> findByDeviceId(String deviceId){
         return userRepository.findByDeviceId(deviceId);
     }
 
-    public User getByUsername(String username) {
+    public User getByEmail(String username) {
         return userRepository.findByEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Пользователь не найден"));
 
     }
+    public Optional<User> findByEmail(String email){
+        return userRepository.findByEmail(email);
+    }
     public UserDetailsService userDetailsService() {
-        return this::getByUsername;
+        return this::getByEmail;
     }
 
     public User getCurrentUser() {
         var username = SecurityContextHolder.getContext().getAuthentication().getName();
-        return getByUsername(username);
+        return getByEmail(username);
     }
     public User findById(UUID id){
         return userRepository.findById(id)

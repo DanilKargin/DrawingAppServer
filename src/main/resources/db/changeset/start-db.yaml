@@ -29,7 +29,42 @@ databaseChangeLog:
               - column:
                   name: tokenExpiryDate
                   type: timestamp
+        - createTable: # создаем новую таблицу
+            tableName: users_profile
+            columns: # объявления колонок
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: nickname
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: currency
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: energy
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_users
+                    references: users(id)
         - addDefaultValue:
             tableName: users
+            columnName: id
+            defaultValueComputed: gen_random_uuid()
+        - addDefaultValue:
+            tableName: users_profile
             columnName: id
             defaultValueComputed: gen_random_uuid()

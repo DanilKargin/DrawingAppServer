@@ -1,4 +1,4 @@
-package com.example.demo.controller.domain.request;
+package com.example.demo.controller.domain.request.authentication;
 
 import lombok.Data;
 

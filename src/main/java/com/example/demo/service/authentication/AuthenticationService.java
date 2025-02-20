@@ -1,6 +1,6 @@
 package com.example.demo.service.authentication;
 
-import com.example.demo.controller.domain.request.*;
+import com.example.demo.controller.domain.request.authentication.*;
 import com.example.demo.controller.domain.response.MessageResponse;
 import com.example.demo.entity.User;
 import com.example.demo.entity.enums.UserRole;
@@ -40,9 +40,9 @@ public class AuthenticationService {
     public MessageResponse signUp(SignUpRequest request) {
 
         try {
-            var checkUser = userService.getByUsername(request.getEmail());
-            if(checkUser.getRole() == UserRole.NOT_CONFIRMED){
-                userService.deleteUser(checkUser);
+            var checkUser = userService.findByEmail(request.getEmail());
+            if(checkUser.isPresent() && checkUser.get().getRole() == UserRole.NOT_CONFIRMED){
+                userService.deleteUser(checkUser.get());
             }
             var user = User.builder()
                     .email(request.getEmail())
@@ -98,7 +98,7 @@ public class AuthenticationService {
 
     public MessageResponse signIn(SignInRequest request) {
         try {
-            var checkUser = userService.getByUsername(request.getEmail());
+            var checkUser = userService.getByEmail(request.getEmail());
             if(checkUser.getRole() != UserRole.USER){
                 throw new UsernameNotFoundException("Пользователь с такой почтой не найден");
             }
@@ -118,7 +118,7 @@ public class AuthenticationService {
     }
     public MessageResponse verifyEmail(VerifyRequest request) {
         try {
-            var user = userService.getByUsername(request.getEmail());
+            var user = userService.getByEmail(request.getEmail());
             checkUserSecurityToken(request.getToken(), user);
             user.setRole(UserRole.USER);
             user.setVerificationToken(null);
@@ -132,7 +132,7 @@ public class AuthenticationService {
     }
     public MessageResponse sendSecurityToken(VerifyRequest request){
         try {
-            User user = userService.getByUsername(request.getEmail());
+            User user = userService.getByEmail(request.getEmail());
             generateVerificationToken(user);
             userService.save(user);
             Thread emailSendThread = new Thread(new Runnable()
@@ -154,7 +154,7 @@ public class AuthenticationService {
     }
     public MessageResponse checkToken(String token, String email){
         try{
-            User user = userService.getByUsername(email);
+            User user = userService.getByEmail(email);
             return checkUserSecurityToken(token, user);
         }catch (Exception e){
             return new MessageResponse("", e.getMessage());
@@ -162,7 +162,7 @@ public class AuthenticationService {
     }
     public MessageResponse changePassword(ChangePasswordRequest request){
         try {
-            User user = userService.getByUsername(request.getEmail());
+            User user = userService.getByEmail(request.getEmail());
             checkUserSecurityToken(request.getToken(), user);
             if(!request.getPassword().isEmpty()){
                 user.setPassword(passwordEncoder.encode(request.getPassword()));
