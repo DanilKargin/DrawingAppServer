@@ -1,6 +1,5 @@
 package com.example.demo.service;
 
-import com.example.demo.controller.domain.request.user.UserProfileRequest;
 import com.example.demo.controller.domain.response.MessageResponse;
 import com.example.demo.dto.UserProfileDto;
 import com.example.demo.entity.User;
@@ -9,7 +8,6 @@ import com.example.demo.repository.UserProfileRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -22,9 +20,9 @@ public class UserProfileService {
     private final UserProfileRepository userProfileRepository;
 
     @Value("${energy.valueMax}")
-    private final int ENERGY_MAX;
+    private int ENERGY_MAX;
     @Value("${energy.recoveryTime}")
-    private final long ENERGY_RECOVERY_TIME;
+    private long ENERGY_RECOVERY_TIME;
 
     public UserProfile save(UserProfile user) {
         return userProfileRepository.save(user);
@@ -92,6 +90,12 @@ public class UserProfileService {
         return false;
     }
 
+    public void deleteUserProfile(User user){
+        var userProfile = userProfileRepository.findByUser(user);
+        if(userProfile.isPresent()) {
+            userProfileRepository.delete(userProfile.get());
+        }
+    }
     private void synchronizeEnergy(UserProfile userProfile){
         if(userProfile.getEnergyTime() != null && userProfile.getEnergy() < ENERGY_MAX){
             if(userProfile.getEnergyTime().isBefore(LocalDateTime.now())){

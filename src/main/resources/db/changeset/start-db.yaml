@@ -19,15 +19,20 @@ databaseChangeLog:
                     nullable: false
                     unique : true
               - column:
+                  name: device_id
+                  type: varchar(200)
+                  constraints:
+                    unique: true
+              - column:
                   name: password
                   type: varchar(30)
                   constraints:
                     nullable: false
               - column:
-                  name: verificationToken
+                  name: verification_token
                   type: varchar(200)
               - column:
-                  name: tokenExpiryDate
+                  name: token_expiry_date
                   type: timestamp
         - createTable: # создаем новую таблицу
             tableName: users_profile
@@ -53,6 +58,9 @@ databaseChangeLog:
                   type: integer
                   constraints:
                     nullable: false
+              - column:
+                  name: energy_time
+                  type: timestamp
               - column:
                   name: user_id
                   type: UUID

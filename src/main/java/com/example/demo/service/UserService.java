@@ -65,7 +65,9 @@ public class UserService {
         return userRepository.findById(id)
                 .orElseThrow(() -> new UsernameNotFoundException("Пользователь не найден"));
     }
+    @Transactional
     public void deleteUser(User user){
+        userProfileService.deleteUserProfile(user);
         userRepository.delete(user);
     }
 }
