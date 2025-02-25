@@ -28,7 +28,7 @@ public class UserController {
 
     @GetMapping("/get-profile")
     public ResponseEntity<UserProfileDto> GetProfileData(@AuthenticationPrincipal User user){
-        return ResponseEntity.ok(userProfileService.findByUser(user));
+        return ResponseEntity.ok(new UserProfileDto(userProfileService.findByUser(user)));
     }
 
     @PutMapping("/change-nickname")

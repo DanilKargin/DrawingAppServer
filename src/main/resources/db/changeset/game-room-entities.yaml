@@ -1,0 +1,88 @@
+databaseChangeLog:
+  - changeSet:
+      id: game-room-entities.yaml #текстовый идентификатор (Обязателен)
+      author: ghost # автор (Обязателен)
+      changes:
+        - createTable: # создаем новую таблицу
+            tableName: words
+            columns: # объявления колонок
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: term
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: description
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: game_rooms
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: change_date
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: image
+                  type: bytea
+              - column:
+                  name: health
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: word_id
+                  type: UUID
+                  constraints:
+                    foreignKeyName: fk_words
+                    references: words(id)
+        - createTable:
+            tableName: users_profile_game_rooms
+            columns:
+              - column:
+                  name: user_profile_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_users_profile
+                    references: users_profile(id)
+              - column:
+                  name: game_room_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_game_rooms
+                    references: game_rooms(id)
+              - column:
+                  name: status
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+        - addDefaultValue:
+            tableName: words
+            columnName: id
+            defaultValueComputed: gen_random_uuid()
+        - addDefaultValue:
+            tableName: game_rooms
+            columnName: id
+            defaultValueComputed: gen_random_uuid()

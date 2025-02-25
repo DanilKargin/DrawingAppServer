@@ -44,12 +44,12 @@ public class UserProfileService {
                 .build();
         return save(userProfile);
     }
-    public UserProfileDto findByUser(User user){
+    public UserProfile findByUser(User user){
         var userProfileOpt = userProfileRepository.findByUser(user);
         if(userProfileOpt.isPresent()){
             var userProfile = userProfileOpt.get();
             synchronizeEnergy(userProfile);
-            return new UserProfileDto(save(userProfile));
+            return save(userProfile);
         }
         return null;
     }
@@ -70,8 +70,8 @@ public class UserProfileService {
         }
     }
     @Transactional
-    public boolean subtractEnergy(User user){
-        var userProfileOpt = userProfileRepository.findByUser(user);
+    public boolean subtractEnergy(UserProfile user){
+        var userProfileOpt = userProfileRepository.findById(user.getId());
         if(userProfileOpt.isPresent()){
             var userProfile = userProfileOpt.get();
             synchronizeEnergy(userProfile);

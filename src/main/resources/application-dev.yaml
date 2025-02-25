@@ -7,7 +7,7 @@ spring:
     driverClassName: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
   mail:
     host: smtp.mail.ru
     port: 465
