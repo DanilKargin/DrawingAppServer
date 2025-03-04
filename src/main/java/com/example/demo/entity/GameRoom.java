@@ -40,7 +40,4 @@ public class GameRoom {
     @JoinColumn(name="word_id")
     private Word word;
 
-    @OneToMany(fetch = FetchType.EAGER, mappedBy = "game_rooms")
-    @JoinColumn(name="game_room_id")
-    private List<UserGameRoom> userGameRoomList;
 }

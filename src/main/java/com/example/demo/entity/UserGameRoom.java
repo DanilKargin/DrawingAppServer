@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -13,13 +14,18 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Entity(name="users_profile_game_rooms")
 public class UserGameRoom {
+    @Id
+    @GeneratedValue
+    @Column(name = "id")
+    private UUID id;
+
     @ManyToOne
-    @JoinColumn(name="user_profile_id", nullable = false)
+    @JoinColumn(name="user_profile_id")
     private UserProfile userProfile;
 
     @ManyToOne
     @JoinColumn(name="game_room_id", nullable = false)
-    private GameRoom room;
+    private GameRoom gameRoom;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)

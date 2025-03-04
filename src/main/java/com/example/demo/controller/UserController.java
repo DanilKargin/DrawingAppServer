@@ -19,7 +19,7 @@ import java.util.Optional;
 import static com.example.demo.config.SecurityConfig.SECURITY_CONFIG_NAME;
 
 @RestController
-@RequestMapping("/user")
+@RequestMapping("/api/user")
 @RequiredArgsConstructor
 @SecurityRequirement(name = SECURITY_CONFIG_NAME)
 public class UserController {

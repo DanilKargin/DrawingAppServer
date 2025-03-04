@@ -6,5 +6,5 @@ import lombok.Data;
 public class GameRoomRequest {
     private String roomId;
     private byte[] image;
-    private String word;
+    private String wordId;
 }

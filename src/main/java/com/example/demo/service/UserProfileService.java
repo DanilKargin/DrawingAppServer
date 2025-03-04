@@ -38,7 +38,7 @@ public class UserProfileService {
         int number = rnd.nextInt(999999);
         var userProfile = UserProfile.builder()
                 .currency(1000)
-                .energy(10)
+                .energy(ENERGY_MAX)
                 .nickname("Игрок-" + String.format("%06d", number))
                 .user(user)
                 .build();

@@ -60,10 +60,15 @@ databaseChangeLog:
             tableName: users_profile_game_rooms
             columns:
               - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
                   name: user_profile_id
                   type: UUID
                   constraints:
-                    nullable: false
                     foreignKeyName: fk_users_profile
                     references: users_profile(id)
               - column:

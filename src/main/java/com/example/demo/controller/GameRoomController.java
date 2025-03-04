@@ -17,7 +17,7 @@ import java.util.List;
 import static com.example.demo.config.SecurityConfig.SECURITY_CONFIG_NAME;
 
 @RestController
-@RequestMapping("/game-room")
+@RequestMapping("/api/game-room")
 @RequiredArgsConstructor
 @SecurityRequirement(name = SECURITY_CONFIG_NAME)
 public class GameRoomController {
@@ -48,7 +48,7 @@ public class GameRoomController {
         return ResponseEntity.ok(gameRoomService.setWordInRoom(user, request));
     }
     @PutMapping("/check-word-input")
-    public ResponseEntity<Integer> checkWordInput(@AuthenticationPrincipal User user, @RequestBody GameRoomRequest request){
+    public ResponseEntity<GameRoomDto> checkWordInput(@AuthenticationPrincipal User user, @RequestBody GameRoomRequest request){
         return ResponseEntity.ok(gameRoomService.checkWord(user, request));
     }
 }

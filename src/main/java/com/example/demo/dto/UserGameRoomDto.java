@@ -7,13 +7,17 @@ import java.time.LocalDateTime;
 
 @Data
 public class UserGameRoomDto {
+    private String id;
     private String roomId;
-    private String userNickname;
+    private String userNickname = "";
     private LocalDateTime changeDate;
 
     public UserGameRoomDto(UserGameRoom userGameRoom){
-        this.roomId = userGameRoom.getRoom().getId().toString();
-        this.userNickname = userGameRoom.getUserProfile().getNickname();
-        this.changeDate = userGameRoom.getRoom().getChangeDate();
+        this.id = userGameRoom.getId().toString();
+        this.roomId = userGameRoom.getGameRoom().getId().toString();
+        if(userGameRoom.getUserProfile() != null) {
+            this.userNickname = userGameRoom.getUserProfile().getNickname();
+        }
+        this.changeDate = userGameRoom.getGameRoom().getChangeDate();
     }
 }

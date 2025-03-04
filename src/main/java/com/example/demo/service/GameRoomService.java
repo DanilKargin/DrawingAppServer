@@ -18,7 +18,9 @@ import org.springframework.stereotype.Service;
 import org.webjars.NotFoundException;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -32,17 +34,17 @@ public class GameRoomService {
 
     public List<UserGameRoomDto> getReadyRoomList(User user){
         var userProfile = userProfileService.findByUser(user);
-        return userGameRoomRepository.findAllByUserProfileIsNotAndStatusIsNot(userProfile, GameUserStatus.WAITING).stream().map(UserGameRoomDto::new).collect(Collectors.toList());
+        return userGameRoomRepository.findAllByUserProfileIsNotAndStatusIsNot(userProfile.getId(), GameUserStatus.WAITING).stream().map(UserGameRoomDto::new).collect(Collectors.toList());
     }
     public List<UserGameRoomDto> getWaitingRoomList(User user){
         var userProfile = userProfileService.findByUser(user);
-        return userGameRoomRepository.findAllByUserProfileIsNotAndStatus(userProfile, GameUserStatus.WAITING).stream().map(UserGameRoomDto::new).collect(Collectors.toList());
+        return userGameRoomRepository.findAllByUserProfileIsNotAndStatus(userProfile.getId(), GameUserStatus.WAITING).stream().map(UserGameRoomDto::new).collect(Collectors.toList());
     }
 
     @Transactional
     public GameRoomDto findGameRoom(User user) {
         var userProfile = userProfileService.findByUser(user);
-        var opponentOpt = gameRoomRepository.findFirstOldRoomByStatus(GameRoomStatus.FREE, GameUserStatus.WAITING);
+        var opponentOpt = gameRoomRepository.findFirstOldRoomByStatus(GameRoomStatus.FREE, GameUserStatus.WAITING, userProfile);
         GameRoom gameRoom = null;
         UserGameRoom userGameRoom;
         if(userProfileService.subtractEnergy(userProfile)) {
@@ -50,12 +52,8 @@ public class GameRoomService {
                 var room = opponentOpt.get();
                 room.setStatus(GameRoomStatus.BUSY);
                 gameRoom = gameRoomRepository.save(room);
-                gameRoom.setWord(null);
-                userGameRoom = UserGameRoom.builder()
-                        .userProfile(userProfile)
-                        .room(gameRoom)
-                        .status(GameUserStatus.GUESSING)
-                        .build();
+                userGameRoom = getUserGameRoomByUserAndRoom(null, gameRoom);
+                userGameRoom.setUserProfile(userProfile);
             } else {
                 var room = GameRoom.builder()
                         .status(GameRoomStatus.FREE)
@@ -65,16 +63,27 @@ public class GameRoomService {
                 gameRoom = gameRoomRepository.save(room);
                 userGameRoom = UserGameRoom.builder()
                         .userProfile(userProfile)
-                        .room(gameRoom)
+                        .gameRoom(gameRoom)
                         .status(GameUserStatus.DRAWING)
                         .build();
+                var opponentUserGameRoom = UserGameRoom.builder()
+                        .userProfile(null)
+                        .gameRoom(gameRoom)
+                        .status(GameUserStatus.WAITING)
+                        .build();
+                userGameRoomRepository.save(opponentUserGameRoom);
             }
             userGameRoomRepository.save(userGameRoom);
-            return new GameRoomDto(gameRoom);
+            var result = new GameRoomDto(gameRoom);
+            if(userGameRoom.getStatus() == GameUserStatus.GUESSING){
+                result.setLetters(createAlphabet(result.getTerm()));
+                result.setTerm(null);
+                result.setDescription(null);
+            }
+            return result;
         }else{
             return null;
         }
-
     }
 
     public GameRoomDto getGameRoomById(User user, String roomId){
@@ -82,10 +91,13 @@ public class GameRoomService {
             var userProfile = userProfileService.findByUser(user);
             var gameRoom = getGameRoomById(UUID.fromString(roomId));
             var userGameRoom = getUserGameRoomByUserAndRoom(userProfile, gameRoom);
+            GameRoomDto result = new GameRoomDto(gameRoom);
             if(userGameRoom.getStatus().equals(GameUserStatus.GUESSING)){
-                gameRoom.setWord(null);
+                result.setLetters(createAlphabet(result.getTerm()));
+                result.setTerm(null);
+                result.setDescription(null);
             }
-            return new GameRoomDto(gameRoom);
+            return result;
         }catch(Exception e){
             return null;
         }
@@ -120,11 +132,13 @@ public class GameRoomService {
         try {
             var userProfile = userProfileService.findByUser(user);
             var gameRoom = getGameRoomById(UUID.fromString(request.getRoomId()));
-            var word = wordService.findByTerm(request.getWord());
+            var word = wordService.findById(UUID.fromString(request.getWordId()));
             var userGameRoom = getUserGameRoomByUserAndRoom(userProfile, gameRoom);
             if(userGameRoom.getStatus().equals(GameUserStatus.DRAWING)){
-                gameRoom.setWord(word);
-                return new GameRoomDto(gameRoomRepository.save(gameRoom));
+                if(gameRoom.getWord() == null) {
+                    gameRoom.setWord(word);
+                    return new GameRoomDto(gameRoomRepository.save(gameRoom));
+                }
             }
             return null;
         }catch(Exception e){
@@ -132,15 +146,17 @@ public class GameRoomService {
         }
     }
     @Transactional
-    public Integer checkWord(User user, GameRoomRequest request){
+    public GameRoomDto checkWord(User user, GameRoomRequest request){
         try {
             var userProfile = userProfileService.findByUser(user);
             var gameRoom = getGameRoomById(UUID.fromString(request.getRoomId()));
             var userGameRoom = getUserGameRoomByUserAndRoom(userProfile, gameRoom);
+            var word = wordService.findByTerm(request.getWordId());
             if(userGameRoom.getStatus().equals(GameUserStatus.GUESSING)){
                 var health = gameRoom.getHealth();
+                GameRoomDto gameRoomDto;
                 if(health > 0){
-                    if(gameRoom.getWord().getTerm().equals(request.getWord())){
+                    if(word.isPresent() && gameRoom.getWord().getTerm().equalsIgnoreCase(word.get().getTerm())){
                         userGameRoom.setStatus(GameUserStatus.DRAWING);
                         userGameRoomRepository.save(userGameRoom);
                         gameRoom.setWord(null);
@@ -155,8 +171,12 @@ public class GameRoomService {
                         }
                         gameRoom.setHealth(health);
                     }
-                    gameRoomRepository.save(gameRoom);
-                    return health;
+                    gameRoomDto = new GameRoomDto(gameRoomRepository.save(gameRoom));
+                    if(userGameRoom.getGameRoom().equals(GameUserStatus.GUESSING)){
+                        gameRoomDto.setTerm(null);
+                        gameRoomDto.setDescription(null);
+                    }
+                    return gameRoomDto;
                 }
             }
             return null;
@@ -171,5 +191,25 @@ public class GameRoomService {
     private UserGameRoom getUserGameRoomByUserAndRoom(UserProfile user, GameRoom room){
         return userGameRoomRepository.findByUserProfileAndGameRoom(user, room)
                 .orElseThrow(() -> new NotFoundException("Комната не найдена!"));
+    }
+    private String createAlphabet(String word){
+        char[] alphabet = new char[18];
+        Random rand = new Random();
+        for(int i = 0; i < alphabet.length; i++){
+            alphabet[i] = (char) (rand.nextInt(32) + 1040);
+        }
+
+        List<Integer> history = new ArrayList<>();
+        for(var letter : word.toUpperCase().toCharArray()){
+            while(true){
+                var index = rand.nextInt(alphabet.length);
+                if(!history.contains(index)) {
+                    alphabet[index] = letter;
+                    history.add(index);
+                    break;
+                }
+            }
+        }
+        return new String(alphabet);
     }
 }

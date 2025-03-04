@@ -14,7 +14,7 @@ import java.util.List;
 import static com.example.demo.config.SecurityConfig.SECURITY_CONFIG_NAME;
 
 @RestController
-@RequestMapping("/word")
+@RequestMapping("/api/word")
 @RequiredArgsConstructor
 @SecurityRequirement(name = SECURITY_CONFIG_NAME)
 public class WordController {

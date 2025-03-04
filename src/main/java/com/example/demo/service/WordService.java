@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.webjars.NotFoundException;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -23,9 +24,8 @@ public class WordService {
         return wordRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Термин не найден!"));
     }
-    public Word findByTerm(String term){
-        return wordRepository.findByTerm(term)
-                .orElseThrow(() -> new NotFoundException("Термин не найден!"));
+    public Optional<Word> findByTerm(String term){
+        return wordRepository.findByTerm(term);
     }
     public List<WordDto> getRandomWords(){
         return wordRepository.getThreeRandomWord().stream().map(WordDto::new).collect(Collectors.toList());

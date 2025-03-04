@@ -9,7 +9,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface WordRepository extends JpaRepository<Word, UUID> {
+    @Query("SELECT w FROM words w WHERE TRIM(LOWER(w.term)) LIKE TRIM(LOWER(?1))")
     Optional<Word> findByTerm(String term);
-    @Query("SELECT w FROM Word w ORDER BY random() LIMIT 3")
+    @Query("SELECT w FROM words w ORDER BY random() LIMIT 3")
     List<Word> getThreeRandomWord();
 }
