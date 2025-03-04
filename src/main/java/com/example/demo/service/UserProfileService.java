@@ -9,10 +9,12 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.webjars.NotFoundException;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Random;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -52,6 +54,10 @@ public class UserProfileService {
             return save(userProfile);
         }
         return null;
+    }
+    public UserProfile findById(String id){
+        return userProfileRepository.findById(UUID.fromString(id))
+                .orElseThrow(() -> new NotFoundException("Пользователь не найден."));
     }
 
     public MessageResponse changeNickname(String nickname, User user){
