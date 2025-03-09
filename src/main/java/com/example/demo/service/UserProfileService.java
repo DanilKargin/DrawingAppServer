@@ -21,9 +21,9 @@ import java.util.UUID;
 public class UserProfileService {
     private final UserProfileRepository userProfileRepository;
 
-    @Value("${energy.valueMax}")
+    @Value("${gameConstants.energy.valueMax}")
     private int ENERGY_MAX;
-    @Value("${energy.recoveryTime}")
+    @Value("${gameConstants.energy.recoveryTime}")
     private long ENERGY_RECOVERY_TIME;
 
     public UserProfile save(UserProfile user) {

@@ -1,0 +1,40 @@
+databaseChangeLog:
+  - changeSet:
+      id: add_user-picture.yaml #текстовый идентификатор (Обязателен)
+      author: ghost # автор (Обязателен)
+      changes:
+        - createTable: # создаем новую таблицу
+            tableName: user_pictures
+            columns: # объявления колонок
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: image
+                  type: bytea
+                  constraints:
+                    nullable: false
+              - column:
+                  name: create_date
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: likes
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_profile_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_user_profile
+                    references: users_profile(id)
+        - addDefaultValue:
+            tableName: user_pictures
+            columnName: id
+            defaultValueComputed: gen_random_uuid()

@@ -44,7 +44,7 @@ public class UserController {
     public ResponseEntity<List<UserPictureDto>> getUserPictures(@AuthenticationPrincipal User user){
         return ResponseEntity.ok(userPictureService.getUserPictures(user));
     }
-    @GetMapping("/pictures")
+    @GetMapping("/pictures/id")
     public ResponseEntity<List<UserPictureDto>> getUserPicturesById(@RequestParam String id){
         return ResponseEntity.ok(userPictureService.getUserPicturesById(id));
     }

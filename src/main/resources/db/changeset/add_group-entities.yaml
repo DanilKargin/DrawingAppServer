@@ -1,0 +1,125 @@
+databaseChangeLog:
+  - changeSet:
+      id: add_group-entities.yaml #текстовый идентификатор (Обязателен)
+      author: ghost # автор (Обязателен)
+      changes:
+        - createTable:
+            tableName: group_logos
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: image
+                  type: bytea
+                  constraints:
+                    nullable: false
+        - createTable: # создаем новую таблицу
+            tableName: groups
+            columns: # объявления колонок
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tag
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: member_count
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: group_logo_id
+                  type: UUID
+                  constraints:
+                    foreignKeyName: fk_group_logo
+                    references: group_logos(id)
+                    nullable: false
+        - createTable:
+            tableName: group_members
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: member_role
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_profile_id
+                  type: UUID
+                  constraints:
+                    foreignKeyName: fk_user_profile
+                    references: users_profile
+                    nullable: false
+              - column:
+                  name: group_id
+                  type: UUID
+                  constraints:
+                    foreignKeyName: fk_group
+                    references: groups(id)
+                    nullable: false
+        - createTable:
+            tableName: member_messages
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: text
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: send_date
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: group_member_id
+                  type: UUID
+                  constraints:
+                    foreignKeyName: fk_group_member
+                    references: group_members(id)
+                    nullable: false
+        - addDefaultValue:
+            tableName: member_messages
+            columnName: id
+            defaultValueComputed: gen_random_uuid()
+        - addDefaultValue:
+            tableName: group_members
+            columnName: id
+            defaultValueComputed: gen_random_uuid()
+        - addDefaultValue:
+            tableName: groups
+            columnName: id
+            defaultValueComputed: gen_random_uuid()
+        - addDefaultValue:
+            tableName: group_logos
+            columnName: id
+            defaultValueComputed: gen_random_uuid()
