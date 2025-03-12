@@ -5,12 +5,10 @@ import com.example.demo.controller.domain.request.group.SearchGroupRequest;
 import com.example.demo.controller.domain.response.MessageResponse;
 import com.example.demo.dto.GroupDto;
 import com.example.demo.dto.GroupLogoDto;
-import com.example.demo.dto.GroupMemberDto;
 import com.example.demo.entity.*;
 import com.example.demo.entity.enums.GroupType;
 import com.example.demo.entity.enums.MemberRole;
 import com.example.demo.repository.GroupLogoRepository;
-import com.example.demo.repository.GroupMemberRepository;
 import com.example.demo.repository.GroupRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +26,7 @@ import java.util.stream.Collectors;
 public class GroupService {
     private final GroupRepository groupRepository;
     private final UserProfileService userProfileService;
-    private final GroupMemberRepository groupMemberRepository;
+    private final GroupMemberService groupMemberService;
     private final GroupLogoRepository groupLogoRepository;
 
     @Value("${gameConstants.group.createPrice}")
@@ -44,11 +42,10 @@ public class GroupService {
         return groupLogoRepository.findAll().stream().map(GroupLogoDto::new).collect(Collectors.toList());
     }
     public GroupDto getCurrentUserGroup(User user){
-        var userProfile = userProfileService.findByUser(user);
-        var groupMember = groupMemberRepository.findByUserProfileAndMemberRoleIsNot(userProfile, MemberRole.NOT_CONFIRMED);
-        if(groupMember.isPresent()){
-            return new GroupDto(groupMember.get().getGroup());
-        }else {
+        var group = findGroupByUser(user);
+        if(group != null){
+            return new GroupDto(group);
+        }else{
             return new GroupDto();
         }
     }
@@ -65,7 +62,7 @@ public class GroupService {
         if(userProfile != null && logo.isPresent()){
             int checkCurrency = userProfile.getCurrency() - CREATE_PRICE;
             if(checkCurrency >= 0){
-                if(!groupMemberRepository.existsByUserProfileAndMemberRoleIsNot(userProfile, MemberRole.NOT_CONFIRMED)) {
+                if(!groupMemberService.existsByUserProfileAndMemberRoleIsNotIn(userProfile, List.of(MemberRole.NOT_CONFIRMED, MemberRole.EXCLUDED))) {
                     userProfile.setCurrency(checkCurrency);
                     var group = Group.builder()
                             .name(request.getName())
@@ -80,8 +77,8 @@ public class GroupService {
                             .group(result)
                             .userProfile(userProfileService.save(userProfile))
                             .build();
-                    groupMemberRepository.save(leaderMember);
-                    result.getMembers().add(groupMemberRepository.save(leaderMember));
+                    var leader = groupMemberService.save(leaderMember);
+                    result.getMembers().add(leader);
                     return new GroupDto(result);
                 }
             }else{
@@ -94,9 +91,9 @@ public class GroupService {
     public MessageResponse joinGroup(User user, SearchGroupRequest request){
         try {
             var userProfile = userProfileService.findByUser(user);
-            if(!groupMemberRepository.existsByUserProfileAndMemberRoleIsNot(userProfile, MemberRole.NOT_CONFIRMED)) {
-                var group = getGroupById(UUID.fromString(request.getId()));
-                var groupMemberOpt = groupMemberRepository.findByUserProfileAndGroup(userProfile, group);
+            if(!groupMemberService.existsByUserProfileAndMemberRoleIsNotIn(userProfile, List.of(MemberRole.NOT_CONFIRMED, MemberRole.EXCLUDED))) {
+                var group = findGroupById(UUID.fromString(request.getId()));
+                var groupMemberOpt = groupMemberService.findByUserProfileAndGroup(userProfile, group);
                 if (groupMemberOpt.isEmpty()) {
                     if (group.getType() == GroupType.FREE_ENTRY) {
                         var groupMember = GroupMember.builder()
@@ -104,7 +101,7 @@ public class GroupService {
                                 .memberRole(MemberRole.MEMBER)
                                 .userProfile(userProfile)
                                 .build();
-                        groupMemberRepository.save(groupMember);
+                        groupMemberService.save(groupMember);
                         return new MessageResponse("Вы успешно вступили в " + group.getName(), "");
                     } else if (group.getType() == GroupType.ENTRY_ON_REQUEST) {
                         var groupMember = GroupMember.builder()
@@ -112,7 +109,20 @@ public class GroupService {
                                 .memberRole(MemberRole.NOT_CONFIRMED)
                                 .userProfile(userProfile)
                                 .build();
-                        groupMemberRepository.save(groupMember);
+                        groupMemberService.save(groupMember);
+                        return new MessageResponse("Успешная заявка.", "");
+                    } else {
+                        return new MessageResponse("Вступление только по приглашениям.", "");
+                    }
+                }else{
+                    var groupMember = groupMemberOpt.get();
+                    if (group.getType() == GroupType.FREE_ENTRY) {
+                        groupMember.setMemberRole(MemberRole.MEMBER);
+                        groupMemberService.save(groupMember);
+                        return new MessageResponse("Вы успешно вступили в " + group.getName(), "");
+                    } else if (group.getType() == GroupType.ENTRY_ON_REQUEST) {
+                        groupMember.setMemberRole(MemberRole.NOT_CONFIRMED);
+                        groupMemberService.save(groupMember);
                         return new MessageResponse("Успешная заявка.", "");
                     } else {
                         return new MessageResponse("Вступление только по приглашениям.", "");
@@ -128,33 +138,29 @@ public class GroupService {
     public MessageResponse quitFromGroup(User user){
         try {
             var userProfile = userProfileService.findByUser(user);
-            var groupMemberOpt = groupMemberRepository.findByUserProfileAndMemberRoleIsNot(userProfile, MemberRole.NOT_CONFIRMED);
-            if (groupMemberOpt.isPresent()) {
-                var groupMember = groupMemberOpt.get();
+            var groupMember = groupMemberService.findGroupMemberByUserProfile(userProfile);
                 if (groupMember.getMemberRole() == MemberRole.LEADER) {
-                    var group = getGroupById(groupMember.getGroup().getId());
+                    var group = findGroupById(groupMember.getGroup().getId());
 
                 }
-                groupMemberRepository.delete(groupMemberOpt.get());
+                groupMember.setMemberRole(MemberRole.EXCLUDED);
+                groupMemberService.save(groupMember);
                 return new MessageResponse("Вы успешно покинули " + groupMember.getGroup().getName(), "");
-            } else {
-                return new MessageResponse("", "Пользователь не находится в группе.");
-            }
         }catch (Exception e){
             return new MessageResponse("", e.getMessage());
         }
     }
 
-    public List<GroupMemberDto> getGroupMembersByGroupId(UUID id){
-        try{
-            var group = getGroupById(id);
-            return groupMemberRepository.findAllByGroup(group).stream().map(GroupMemberDto::new).collect(Collectors.toList());
+    public Group findGroupByUser(User user){
+        try {
+            var userProfile = userProfileService.findByUser(user);
+            var groupMember = groupMemberService.findGroupMemberByUserProfile(userProfile);
+            return groupMember.getGroup();
         }catch (Exception e){
             return null;
         }
     }
-
-    private Group getGroupById(UUID id){
+    private Group findGroupById(UUID id){
         return groupRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Группа не найдена."));
     }

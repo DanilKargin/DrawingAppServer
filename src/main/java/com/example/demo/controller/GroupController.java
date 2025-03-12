@@ -5,9 +5,11 @@ import com.example.demo.controller.domain.request.group.SearchGroupRequest;
 import com.example.demo.controller.domain.response.MessageResponse;
 import com.example.demo.dto.GroupDto;
 import com.example.demo.dto.GroupLogoDto;
+import com.example.demo.dto.MemberMessageDto;
 import com.example.demo.entity.GroupLogo;
 import com.example.demo.entity.User;
 import com.example.demo.service.GroupService;
+import com.example.demo.service.MemberMessageService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +26,7 @@ import static com.example.demo.config.SecurityConfig.SECURITY_CONFIG_NAME;
 @SecurityRequirement(name = SECURITY_CONFIG_NAME)
 public class GroupController {
     private final GroupService groupService;
+    private final MemberMessageService memberMessageService;
 
     @GetMapping("/logos")
     public ResponseEntity<List<GroupLogoDto>> getGroupLogos(){
@@ -36,6 +39,10 @@ public class GroupController {
     @GetMapping("/list")
     public ResponseEntity<List<GroupDto>> getGroupList(){
         return ResponseEntity.ok(groupService.getGroupList());
+    }
+    @GetMapping("/chat/history")
+    public ResponseEntity<List<MemberMessageDto>> getChatHistory(@AuthenticationPrincipal User user){
+        return ResponseEntity.ok(memberMessageService.getMessagesHistory(user));
     }
     @PostMapping("/create")
     public ResponseEntity<GroupDto> createGroup(@AuthenticationPrincipal User user, @RequestBody GroupRequest request){

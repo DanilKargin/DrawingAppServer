@@ -1,0 +1,19 @@
+package com.example.demo.config;
+
+import com.example.demo.handler.GroupChatWebSocketHandler;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+import org.springframework.web.socket.config.annotation.*;
+
+@Configuration
+@EnableWebSocket
+@RequiredArgsConstructor
+public class WebSocketConfig implements WebSocketConfigurer {
+    private final GroupChatWebSocketHandler groupChatWebSocketHandler;
+    @Override
+    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+        registry.addHandler(groupChatWebSocketHandler, "/group-chat")
+                .setAllowedOrigins("*");
+    }
+}

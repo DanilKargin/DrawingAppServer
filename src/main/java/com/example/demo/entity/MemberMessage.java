@@ -11,8 +11,8 @@ import java.util.UUID;
 
 @Data
 @Builder
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 @Entity(name="member_messages")
 public class MemberMessage {
     @Id
@@ -20,13 +20,13 @@ public class MemberMessage {
     @Column(name="id")
     private UUID id;
 
+    @ManyToOne
+    @JoinColumn(name="group_member_id", nullable = false)
+    private GroupMember groupMember;
+
     @Column(nullable = false)
     private String text;
 
     @Column(name="send_date", nullable = false)
     private LocalDateTime sendDate;
-
-    @ManyToOne
-    @JoinColumn(name="group_member_id", nullable = false)
-    private GroupMember groupMember;
 }
