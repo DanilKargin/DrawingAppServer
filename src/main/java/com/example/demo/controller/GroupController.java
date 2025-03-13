@@ -5,9 +5,12 @@ import com.example.demo.controller.domain.request.group.SearchGroupRequest;
 import com.example.demo.controller.domain.response.MessageResponse;
 import com.example.demo.dto.GroupDto;
 import com.example.demo.dto.GroupLogoDto;
+import com.example.demo.dto.GroupMemberDto;
 import com.example.demo.dto.MemberMessageDto;
 import com.example.demo.entity.GroupLogo;
+import com.example.demo.entity.GroupMember;
 import com.example.demo.entity.User;
+import com.example.demo.service.GroupMemberService;
 import com.example.demo.service.GroupService;
 import com.example.demo.service.MemberMessageService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -39,6 +42,10 @@ public class GroupController {
     @GetMapping("/list")
     public ResponseEntity<List<GroupDto>> getGroupList(){
         return ResponseEntity.ok(groupService.getGroupList());
+    }
+    @GetMapping("/{id}/members")
+    public ResponseEntity<List<GroupMemberDto>> getGroupMembers(@PathVariable("id") String id){
+        return ResponseEntity.ok(groupService.getGroupMembers(id));
     }
     @GetMapping("/chat/history")
     public ResponseEntity<List<MemberMessageDto>> getChatHistory(@AuthenticationPrincipal User user){

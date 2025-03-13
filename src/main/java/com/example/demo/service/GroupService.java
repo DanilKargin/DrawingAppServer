@@ -5,6 +5,7 @@ import com.example.demo.controller.domain.request.group.SearchGroupRequest;
 import com.example.demo.controller.domain.response.MessageResponse;
 import com.example.demo.dto.GroupDto;
 import com.example.demo.dto.GroupLogoDto;
+import com.example.demo.dto.GroupMemberDto;
 import com.example.demo.entity.*;
 import com.example.demo.entity.enums.GroupType;
 import com.example.demo.entity.enums.MemberRole;
@@ -19,6 +20,7 @@ import org.webjars.NotFoundException;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,6 +39,14 @@ public class GroupService {
 
     public List<GroupDto> getGroupList(){
         return groupRepository.findAll().stream().map(GroupDto::new).collect(Collectors.toList());
+    }
+    public List<GroupMemberDto> getGroupMembers(String groupId){
+        try{
+            var group = findGroupById(UUID.fromString(groupId));
+            return groupMemberService.findGroupMembersByGroupAndMemberRoles(group, List.of(MemberRole.MEMBER, MemberRole.OFFICER, MemberRole.LEADER)).stream().map(GroupMemberDto::new).collect(Collectors.toList());
+        }catch(Exception e){
+            return null;
+        }
     }
     public List<GroupLogoDto> getGroupLogoList(){
         return groupLogoRepository.findAll().stream().map(GroupLogoDto::new).collect(Collectors.toList());
@@ -62,7 +72,7 @@ public class GroupService {
         if(userProfile != null && logo.isPresent()){
             int checkCurrency = userProfile.getCurrency() - CREATE_PRICE;
             if(checkCurrency >= 0){
-                if(!groupMemberService.existsByUserProfileAndMemberRoleIsNotIn(userProfile, List.of(MemberRole.NOT_CONFIRMED, MemberRole.EXCLUDED))) {
+                if(!groupMemberService.existsByUserProfileAndMemberRoleIsIn(userProfile, List.of(MemberRole.MEMBER, MemberRole.OFFICER, MemberRole.LEADER))) {
                     userProfile.setCurrency(checkCurrency);
                     var group = Group.builder()
                             .name(request.getName())
@@ -91,7 +101,7 @@ public class GroupService {
     public MessageResponse joinGroup(User user, SearchGroupRequest request){
         try {
             var userProfile = userProfileService.findByUser(user);
-            if(!groupMemberService.existsByUserProfileAndMemberRoleIsNotIn(userProfile, List.of(MemberRole.NOT_CONFIRMED, MemberRole.EXCLUDED))) {
+            if(!groupMemberService.existsByUserProfileAndMemberRoleIsIn(userProfile, List.of(MemberRole.MEMBER, MemberRole.OFFICER, MemberRole.LEADER))) {
                 var group = findGroupById(UUID.fromString(request.getId()));
                 var groupMemberOpt = groupMemberService.findByUserProfileAndGroup(userProfile, group);
                 if (groupMemberOpt.isEmpty()) {

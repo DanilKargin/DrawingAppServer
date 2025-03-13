@@ -13,8 +13,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface GroupMemberRepository extends JpaRepository<GroupMember, UUID> {
-    boolean existsByUserProfileAndMemberRoleNotIn(UserProfile userProfile, Collection<MemberRole> memberRoles);
+    boolean existsByUserProfileAndMemberRoleIn(UserProfile userProfile, Collection<MemberRole> memberRoles);
     List<GroupMember> findAllByGroup(Group group);
     Optional<GroupMember> findByUserProfileAndGroup(UserProfile userProfile, Group group);
-    Optional<GroupMember> findByUserProfileAndMemberRoleNotIn(UserProfile userProfile, Collection<MemberRole> memberRoles);
+    Optional<GroupMember> findByUserProfileAndMemberRoleIn(UserProfile userProfile, Collection<MemberRole> memberRoles);
+    List<GroupMember> findAllByGroupAndMemberRoleIn(Group group, Collection<MemberRole> memberRoles);
 }

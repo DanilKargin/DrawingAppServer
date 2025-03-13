@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.GroupMemberDto;
 import com.example.demo.entity.Group;
 import com.example.demo.entity.GroupMember;
 import com.example.demo.entity.UserProfile;
@@ -23,14 +24,17 @@ public class GroupMemberService {
         return groupMemberRepository.save(groupMember);
     }
     public GroupMember findGroupMemberByUserProfile(UserProfile userProfile){
-        return groupMemberRepository.findByUserProfileAndMemberRoleNotIn(userProfile, List.of(MemberRole.NOT_CONFIRMED, MemberRole.EXCLUDED))
+        return groupMemberRepository.findByUserProfileAndMemberRoleIn(userProfile, List.of(MemberRole.MEMBER, MemberRole.OFFICER, MemberRole.LEADER))
                 .orElseThrow(() -> new NotFoundException("Участник не найден."));
     }
-    public boolean existsByUserProfileAndMemberRoleIsNotIn(UserProfile userProfile, Collection<MemberRole> memberRole){
-        return groupMemberRepository.existsByUserProfileAndMemberRoleNotIn(userProfile, memberRole);
+    public boolean existsByUserProfileAndMemberRoleIsIn(UserProfile userProfile, Collection<MemberRole> memberRole){
+        return groupMemberRepository.existsByUserProfileAndMemberRoleIn(userProfile, memberRole);
     }
     public Optional<GroupMember> findByUserProfileAndGroup(UserProfile userProfile, Group group){
         return groupMemberRepository.findByUserProfileAndGroup(userProfile, group);
+    }
+    public List<GroupMember> findGroupMembersByGroupAndMemberRoles(Group group, Collection<MemberRole> memberRoles){
+        return groupMemberRepository.findAllByGroupAndMemberRoleIn(group, memberRoles);
     }
     public void delete(GroupMember groupMember){
         groupMemberRepository.delete(groupMember);
