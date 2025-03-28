@@ -43,9 +43,14 @@ public class GroupController {
     public ResponseEntity<List<GroupDto>> getGroupList(){
         return ResponseEntity.ok(groupService.getGroupList());
     }
+
     @GetMapping("/{id}/members")
     public ResponseEntity<List<GroupMemberDto>> getGroupMembers(@PathVariable("id") String id){
         return ResponseEntity.ok(groupService.getGroupMembers(id));
+    }
+    @GetMapping("/requests")
+    public ResponseEntity<List<GroupMemberDto>> getGroupMemberRequests(@AuthenticationPrincipal User user){
+        return ResponseEntity.ok(groupService.getGroupMemberRequests(user));
     }
     @GetMapping("/chat/history")
     public ResponseEntity<List<MemberMessageDto>> getChatHistory(@AuthenticationPrincipal User user){

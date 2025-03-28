@@ -30,6 +30,10 @@ public class WordService {
     public List<WordDto> getRandomWords(){
         return wordRepository.getThreeRandomWord().stream().map(WordDto::new).collect(Collectors.toList());
     }
+    public Word getRandomWordForAi(){
+        return wordRepository.getRandomWord()
+                .orElseThrow(() -> new NotFoundException("Термин не найден."));
+    }
     public WordDto create(Word word){
         if(word.getTerm().isEmpty()){
             return null;

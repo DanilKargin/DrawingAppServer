@@ -18,4 +18,6 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, UUID> 
     Optional<GroupMember> findByUserProfileAndGroup(UserProfile userProfile, Group group);
     Optional<GroupMember> findByUserProfileAndMemberRoleIn(UserProfile userProfile, Collection<MemberRole> memberRoles);
     List<GroupMember> findAllByGroupAndMemberRoleIn(Group group, Collection<MemberRole> memberRoles);
+    @Query("SELECT gm FROM group_members gm where gm.memberRole = 'LEADER' and gm.group.id = ?1")
+    Optional<GroupMember> findLeaderByGroupId(UUID groupId);
 }

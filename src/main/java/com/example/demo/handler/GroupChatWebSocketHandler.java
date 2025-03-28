@@ -1,6 +1,8 @@
 package com.example.demo.handler;
 
 import com.example.demo.controller.domain.request.group.MemberMessageRequest;
+import com.example.demo.dto.MemberMessageDto;
+import com.example.demo.entity.enums.MessageType;
 import com.example.demo.service.MemberMessageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -33,15 +35,28 @@ public class GroupChatWebSocketHandler extends TextWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws IOException {
         String groupId = getGroupId(session);
         MemberMessageRequest request = objectMapper.readValue(message.getPayload(), MemberMessageRequest.class);
-        var memberMessageDto = memberMessageService.sendMessage(request);
+
+        if(request.getType().equals(MessageType.MESSAGE.toString())) {
+            MemberMessageDto memberMessageDto = memberMessageService.sendMessage(request);
+            String responseJson = objectMapper.writeValueAsString(memberMessageDto);
+
+            for (WebSocketSession s : groupSessions.getOrDefault(groupId, new CopyOnWriteArrayList<>())) {
+                if (s.isOpen()) {
+                    s.sendMessage(new TextMessage(responseJson));
+                }
+            }
+        }
+    }
+    public void sendNotificationToGroup(String groupId, MemberMessageRequest memberMessageRequest) throws IOException {
+        MemberMessageDto memberMessageDto = memberMessageService.sendNotification(groupId, memberMessageRequest);
         String responseJson = objectMapper.writeValueAsString(memberMessageDto);
+
         for (WebSocketSession s : groupSessions.getOrDefault(groupId, new CopyOnWriteArrayList<>())) {
             if (s.isOpen()) {
                 s.sendMessage(new TextMessage(responseJson));
             }
         }
     }
-
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         String groupId = getGroupId(session);

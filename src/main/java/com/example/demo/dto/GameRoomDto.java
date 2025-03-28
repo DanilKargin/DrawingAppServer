@@ -2,10 +2,12 @@ package com.example.demo.dto;
 
 import com.example.demo.entity.GameRoom;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Data
+@NoArgsConstructor
 public class GameRoomDto {
     private String id;
     private byte[] image;

@@ -26,6 +26,9 @@ public class UserProfile {
     @Column(nullable = false)
     private int currency;
 
+    @Column(name="picture_max_count", nullable = false)
+    private int pictureMaxCount;
+
     @Column(nullable = false)
     private int energy;
 

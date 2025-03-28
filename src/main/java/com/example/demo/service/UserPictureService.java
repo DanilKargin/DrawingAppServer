@@ -10,7 +10,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.webjars.NotFoundException;
 
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -25,7 +27,7 @@ public class UserPictureService {
         var userProfile = userProfileService.findByUser(user);
         return userPictureRepository.findAllByUserProfile(userProfile).stream().map(UserPictureDto::new).collect(Collectors.toList());
     }
-    public List<UserPictureDto> getUserPicturesById(String id){
+    public List<UserPictureDto> getUserPicturesByUserProfileId(String id){
         try {
             var userProfile = userProfileService.findById(id);
             return userPictureRepository.findAllByUserProfile(userProfile).stream().map(UserPictureDto::new).collect(Collectors.toList());
@@ -34,21 +36,37 @@ public class UserPictureService {
         }
     }
 
+    public List<UserPictureDto> getUserPicturesOrderByLike(){
+
+        return userPictureRepository.findAllByCreateDateAfterOrderByLikesAsc(
+                LocalDateTime.now()
+                    .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                        .withHour(0)
+                        .withMinute(0)
+                        .withSecond(0)
+                        .withNano(0))
+                .stream().map(UserPictureDto::new).collect(Collectors.toList());
+    }
+
     public MessageResponse createPicture(User user, UserPictureRequest request){
         var userProfile = userProfileService.findByUser(user);
-        var userPicture = UserPicture.builder()
-                .userProfile(userProfile)
-                .image(request.getImage())
-                .likes(0)
-                .createDate(LocalDateTime.now())
-                .build();
-        userPictureRepository.save(userPicture);
-        return new MessageResponse("Изображение сохранено в профиль.", "");
-
+        List<UserPictureDto> userPictureList = getUserPictures(user);
+        if(userPictureList.size() + 1 <= userProfile.getPictureMaxCount()) {
+            var userPicture = UserPicture.builder()
+                    .userProfile(userProfile)
+                    .image(request.getImage())
+                    .likes(0)
+                    .createDate(LocalDateTime.now())
+                    .build();
+            userPictureRepository.save(userPicture);
+            return new MessageResponse("Изображение сохранено в профиль.", "");
+        }else{
+            return new MessageResponse("", "Недостаточно места.");
+        }
     }
-    public MessageResponse deletePicture(User user, String id){
+    public MessageResponse deletePicture(User user, UserPictureRequest request){
         var userProfile = userProfileService.findByUser(user);
-        var userPictureOpt = userPictureRepository.findByUserProfileAndId(userProfile, UUID.fromString(id));
+        var userPictureOpt = userPictureRepository.findByUserProfileAndId(userProfile, UUID.fromString(request.getId()));
         if(userPictureOpt.isPresent()){
             userPictureRepository.delete(userPictureOpt.get());
             return new MessageResponse("Изображение удалено", "");

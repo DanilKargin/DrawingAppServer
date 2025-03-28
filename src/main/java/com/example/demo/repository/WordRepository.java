@@ -13,4 +13,6 @@ public interface WordRepository extends JpaRepository<Word, UUID> {
     Optional<Word> findByTerm(String term);
     @Query("SELECT w FROM words w ORDER BY random() LIMIT 3")
     List<Word> getThreeRandomWord();
+    @Query("SELECT w FROM words w ORDER BY random() LIMIT 1")
+    Optional<Word> getRandomWord();
 }

@@ -10,10 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.webjars.NotFoundException;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -36,7 +33,21 @@ public class GroupMemberService {
     public List<GroupMember> findGroupMembersByGroupAndMemberRoles(Group group, Collection<MemberRole> memberRoles){
         return groupMemberRepository.findAllByGroupAndMemberRoleIn(group, memberRoles);
     }
+    public List<GroupMember> findGroupMemberRequests(UserProfile userProfile){
+        var groupMember = groupMemberRepository.findByUserProfileAndMemberRoleIn(userProfile, List.of(MemberRole.LEADER, MemberRole.OFFICER));
+        if(groupMember.isPresent()) {
+            return groupMemberRepository.findAllByGroupAndMemberRoleIn(groupMember.get().getGroup(), List.of(MemberRole.NOT_CONFIRMED));
+        }else{
+            return new ArrayList<>();
+        }
+    }
+
     public void delete(GroupMember groupMember){
         groupMemberRepository.delete(groupMember);
+    }
+
+    public GroupMember findGroupLeaderByGroupId(UUID groupId) {
+        return groupMemberRepository.findLeaderByGroupId(groupId)
+                .orElseThrow(()-> new NotFoundException("Участник не найден."));
     }
 }

@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.controller.domain.request.group.GroupRequest;
+import com.example.demo.controller.domain.request.group.MemberMessageRequest;
 import com.example.demo.controller.domain.request.group.SearchGroupRequest;
 import com.example.demo.controller.domain.response.MessageResponse;
 import com.example.demo.dto.GroupDto;
@@ -9,18 +10,21 @@ import com.example.demo.dto.GroupMemberDto;
 import com.example.demo.entity.*;
 import com.example.demo.entity.enums.GroupType;
 import com.example.demo.entity.enums.MemberRole;
+import com.example.demo.entity.enums.MessageType;
+import com.example.demo.handler.GroupChatWebSocketHandler;
 import com.example.demo.repository.GroupLogoRepository;
 import com.example.demo.repository.GroupRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.webjars.NotFoundException;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,6 +34,8 @@ public class GroupService {
     private final UserProfileService userProfileService;
     private final GroupMemberService groupMemberService;
     private final GroupLogoRepository groupLogoRepository;
+    private final GroupChatWebSocketHandler groupChatWebSocketHandler;
+    private final ObjectMapper objectMapper;
 
     @Value("${gameConstants.group.createPrice}")
     private int CREATE_PRICE;
@@ -43,10 +49,16 @@ public class GroupService {
     public List<GroupMemberDto> getGroupMembers(String groupId){
         try{
             var group = findGroupById(UUID.fromString(groupId));
-            return groupMemberService.findGroupMembersByGroupAndMemberRoles(group, List.of(MemberRole.MEMBER, MemberRole.OFFICER, MemberRole.LEADER)).stream().map(GroupMemberDto::new).collect(Collectors.toList());
+            return groupMemberService.findGroupMembersByGroupAndMemberRoles(group, List.of(MemberRole.MEMBER, MemberRole.OFFICER, MemberRole.LEADER))
+                    .stream().map(GroupMemberDto::new).collect(Collectors.toList());
         }catch(Exception e){
             return null;
         }
+    }
+    public List<GroupMemberDto> getGroupMemberRequests(User user){
+        var userProfile = userProfileService.findByUser(user);
+        return groupMemberService.findGroupMemberRequests(userProfile)
+                .stream().map(GroupMemberDto::new).collect(Collectors.toList());
     }
     public List<GroupLogoDto> getGroupLogoList(){
         return groupLogoRepository.findAll().stream().map(GroupLogoDto::new).collect(Collectors.toList());
@@ -106,13 +118,18 @@ public class GroupService {
                 var groupMemberOpt = groupMemberService.findByUserProfileAndGroup(userProfile, group);
                 if (groupMemberOpt.isEmpty()) {
                     if (group.getType() == GroupType.FREE_ENTRY) {
-                        var groupMember = GroupMember.builder()
-                                .group(group)
-                                .memberRole(MemberRole.MEMBER)
-                                .userProfile(userProfile)
-                                .build();
-                        groupMemberService.save(groupMember);
-                        return new MessageResponse("Вы успешно вступили в " + group.getName(), "");
+                        if(group.getMembers().size() < MAX_MEMBER_COUNT) {
+                            var groupMember = GroupMember.builder()
+                                    .group(group)
+                                    .memberRole(MemberRole.MEMBER)
+                                    .userProfile(userProfile)
+                                    .build();
+                            groupMemberService.save(groupMember);
+                            groupChatWebSocketHandler.sendNotificationToGroup(group.getId().toString(), new MemberMessageRequest("Пользователь " + userProfile.getNickname() + " вступил в группу.", "", MessageType.NOTIFICATION.toString()));
+                            return new MessageResponse("Вы успешно вступили в " + group.getName(), "");
+                        }else{
+                            return new MessageResponse("", "В группе нет свободных мест.");
+                        }
                     } else if (group.getType() == GroupType.ENTRY_ON_REQUEST) {
                         var groupMember = GroupMember.builder()
                                 .group(group)
@@ -129,6 +146,7 @@ public class GroupService {
                     if (group.getType() == GroupType.FREE_ENTRY) {
                         groupMember.setMemberRole(MemberRole.MEMBER);
                         groupMemberService.save(groupMember);
+                        groupChatWebSocketHandler.sendNotificationToGroup(group.getId().toString(), new MemberMessageRequest("Пользователь " + userProfile.getNickname() + " вступил в группу.", "", MessageType.NOTIFICATION.toString()));
                         return new MessageResponse("Вы успешно вступили в " + group.getName(), "");
                     } else if (group.getType() == GroupType.ENTRY_ON_REQUEST) {
                         groupMember.setMemberRole(MemberRole.NOT_CONFIRMED);
@@ -149,13 +167,14 @@ public class GroupService {
         try {
             var userProfile = userProfileService.findByUser(user);
             var groupMember = groupMemberService.findGroupMemberByUserProfile(userProfile);
-                if (groupMember.getMemberRole() == MemberRole.LEADER) {
-                    var group = findGroupById(groupMember.getGroup().getId());
+            if (groupMember.getMemberRole() == MemberRole.LEADER) {
+                var group = findGroupById(groupMember.getGroup().getId());
 
-                }
-                groupMember.setMemberRole(MemberRole.EXCLUDED);
-                groupMemberService.save(groupMember);
-                return new MessageResponse("Вы успешно покинули " + groupMember.getGroup().getName(), "");
+            }
+            groupMember.setMemberRole(MemberRole.EXCLUDED);
+            groupMemberService.save(groupMember);
+            groupChatWebSocketHandler.sendNotificationToGroup(groupMember.getGroup().getId().toString(), new MemberMessageRequest("Пользователь " + userProfile.getNickname() + " вышел из группы.", "", MessageType.NOTIFICATION.toString()));
+            return new MessageResponse("Вы успешно покинули " + groupMember.getGroup().getName(), "");
         }catch (Exception e){
             return new MessageResponse("", e.getMessage());
         }

@@ -41,6 +41,7 @@ public class UserProfileService {
         var userProfile = UserProfile.builder()
                 .currency(1000)
                 .energy(ENERGY_MAX)
+                .pictureMaxCount(9)
                 .nickname("Игрок-" + String.format("%06d", number))
                 .user(user)
                 .build();

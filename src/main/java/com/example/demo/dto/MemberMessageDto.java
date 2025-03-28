@@ -15,6 +15,7 @@ public class MemberMessageDto {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime sendDate;
     private String memberRole;
+    private String type;
 
     public MemberMessageDto(MemberMessage memberMessage){
         this.id = memberMessage.getId().toString();
@@ -23,6 +24,7 @@ public class MemberMessageDto {
         this.memberNickname = memberMessage.getGroupMember().getUserProfile().getNickname();
         this.sendDate = memberMessage.getSendDate();
         this.memberRole = memberMessage.getGroupMember().getMemberRole().toString();
+        this.type = memberMessage.getType().toString();
     }
 }
 

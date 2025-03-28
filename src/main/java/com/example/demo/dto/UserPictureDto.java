@@ -11,11 +11,13 @@ public class UserPictureDto {
     private byte[] image;
     private LocalDateTime createDate;
     private int likes;
+    private String userProfileId;
 
     public UserPictureDto(UserPicture userPicture){
         this.id = userPicture.getId().toString();
         this.image = userPicture.getImage();
         this.createDate = userPicture.getCreateDate();
         this.likes = userPicture.getLikes();
+        this.userProfileId = userPicture.getUserProfile().getId().toString();
     }
 }

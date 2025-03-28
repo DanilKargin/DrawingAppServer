@@ -4,6 +4,7 @@ import com.example.demo.controller.domain.request.gameRoom.GameRoomRequest;
 import com.example.demo.controller.domain.response.MessageResponse;
 import com.example.demo.dto.GameRoomDto;
 import com.example.demo.dto.UserGameRoomDto;
+import com.example.demo.dto.WordDto;
 import com.example.demo.entity.GameRoom;
 import com.example.demo.entity.User;
 import com.example.demo.entity.UserGameRoom;
@@ -12,9 +13,15 @@ import com.example.demo.entity.enums.GameRoomStatus;
 import com.example.demo.entity.enums.GameUserStatus;
 import com.example.demo.repository.GameRoomRepository;
 import com.example.demo.repository.UserGameRoomRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 import org.webjars.NotFoundException;
 
 import java.time.LocalDateTime;
@@ -31,6 +38,7 @@ public class GameRoomService {
     private final UserGameRoomRepository userGameRoomRepository;
     private final UserProfileService userProfileService;
     private final WordService wordService;
+    private final String AI_SERVER_LINK = "http://localhost:8000";
 
     public List<UserGameRoomDto> getReadyRoomList(User user){
         var userProfile = userProfileService.findByUser(user);
@@ -39,6 +47,84 @@ public class GameRoomService {
     public List<UserGameRoomDto> getWaitingRoomList(User user){
         var userProfile = userProfileService.findByUser(user);
         return userGameRoomRepository.findAllByUserProfileIsNotAndStatus(userProfile.getId(), GameUserStatus.WAITING).stream().map(UserGameRoomDto::new).collect(Collectors.toList());
+    }
+    public GameRoomDto getAIGameRoom(User user){
+        try {
+            var userProfile = userProfileService.findByUser(user);
+            var gameRoomOpt = gameRoomRepository.findByStatusAndUserProfile(GameRoomStatus.AI, userProfile);
+            GameRoom gameRoom;
+            if (userProfileService.subtractEnergy(userProfile)) {
+                var word = wordService.getRandomWordForAi();
+                if (gameRoomOpt.isPresent()) {
+                    gameRoom = gameRoomOpt.get();
+                    gameRoom.setChangeDate(LocalDateTime.now());
+                    gameRoom.setWord(word);
+                    gameRoom = gameRoomRepository.save(gameRoom);
+                } else {
+                    gameRoom = GameRoom.builder()
+                            .changeDate(LocalDateTime.now())
+                            .status(GameRoomStatus.AI)
+                            .word(word)
+                            .health(3)
+                            .build();
+                    gameRoom = gameRoomRepository.save(gameRoom);
+                    var userGameRoom = UserGameRoom.builder()
+                            .status(GameUserStatus.DRAWING)
+                            .userProfile(userProfile)
+                            .gameRoom(gameRoom)
+                            .build();
+                    userGameRoomRepository.save(userGameRoom);
+                }
+                return new GameRoomDto(gameRoom);
+            } else {
+                return new GameRoomDto();
+            }
+        }catch (Exception e){
+            return null;
+        }
+    }
+
+    public WordDto checkAIPredict(User user, GameRoomRequest request){
+        RestTemplate restTemplate = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", new ByteArrayResource(request.getImage()) {
+            @Override
+            public String getFilename() {
+                return "image.png";  // Имя файла
+            }
+        });
+
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                AI_SERVER_LINK + "/predict",
+                HttpMethod.POST,
+                requestEntity,
+                String.class
+        );
+        if (response.getStatusCode() == HttpStatus.OK) {
+            ObjectMapper objectMapper = new ObjectMapper();
+            try {
+                String predictionResult = objectMapper.readValue(response.getBody(), String.class);
+                var word = wordService.findByTerm(predictionResult);
+                if (word.isPresent()) {
+                    var userProfile = userProfileService.findByUser(user);
+                    var gameRoomOpt = gameRoomRepository.findByStatusAndUserProfile(GameRoomStatus.AI, userProfile);
+                    if (gameRoomOpt.isPresent()) {
+                        if (gameRoomOpt.get().getWord().getId().equals(word.get().getId())) {
+                            //return new WordDto(word.get());
+                        }
+                        return new WordDto(word.get());
+                    }
+                }
+            }catch(Exception e){
+                return null;
+            }
+        }
+        return null;
     }
 
     @Transactional
@@ -82,7 +168,7 @@ public class GameRoomService {
             }
             return result;
         }else{
-            return null;
+            return new GameRoomDto();
         }
     }
 
