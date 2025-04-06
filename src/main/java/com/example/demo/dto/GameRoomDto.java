@@ -13,6 +13,7 @@ public class GameRoomDto {
     private byte[] image;
     private int health;
     private String term;
+    private String openHints;
     private int termLength;
     private String description;
     private String letters;
@@ -21,6 +22,7 @@ public class GameRoomDto {
         this.id = room.getId().toString();
         this.image = room.getImage();
         this.health = room.getHealth();
+        this.openHints = room.getOpenHints();
         if(room.getWord() != null) {
             this.term = room.getWord().getTerm();
             this.description = room.getWord().getDescription();

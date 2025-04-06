@@ -36,6 +36,9 @@ public class GameRoom {
     @Column(nullable = false)
     private int health;
 
+    @Column(name = "open_hints")
+    private String openHints;
+
     @ManyToOne
     @JoinColumn(name="word_id")
     private Word word;

@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.controller.domain.request.gameRoom.GameRoomRequest;
+import com.example.demo.controller.domain.response.HintResponse;
 import com.example.demo.controller.domain.response.MessageResponse;
 import com.example.demo.dto.GameRoomDto;
 import com.example.demo.dto.UserGameRoomDto;
@@ -16,6 +17,8 @@ import com.example.demo.repository.UserGameRoomRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -39,6 +42,8 @@ public class GameRoomService {
     private final UserProfileService userProfileService;
     private final WordService wordService;
     private final String AI_SERVER_LINK = "http://localhost:8000";
+    @Value("${gameConstants.gameRoom.hintPrice}")
+    private int HINT_PRICE;
 
     public List<UserGameRoomDto> getReadyRoomList(User user){
         var userProfile = userProfileService.findByUser(user);
@@ -48,6 +53,37 @@ public class GameRoomService {
         var userProfile = userProfileService.findByUser(user);
         return userGameRoomRepository.findAllByUserProfileIsNotAndStatus(userProfile.getId(), GameUserStatus.WAITING).stream().map(UserGameRoomDto::new).collect(Collectors.toList());
     }
+    @Transactional
+    public HintResponse getHintInRoom(User user, String gameRoomId){
+        var userProfile = userProfileService.findByUser(user);
+        var userCurrency = userProfile.getCurrency();
+        try {
+            var gameRoom = getGameRoomById(UUID.fromString(gameRoomId));
+            if (userCurrency >= HINT_PRICE) {
+                userProfile.setCurrency(userCurrency - HINT_PRICE);
+                char[] hintsString = gameRoom.getOpenHints().toCharArray();
+                List<Integer> openLists = new ArrayList<>();
+                for(int i = 0; i < hintsString.length; i++){
+                    if(hintsString[i] == '_'){
+                        openLists.add(i);
+                    }
+                }
+                Random random = new Random();
+                int index = openLists.get(random.nextInt(openLists.size()));
+                char letter = gameRoom.getWord().getTerm().toUpperCase().charAt(index);
+                hintsString[index] = letter;
+                gameRoom.setOpenHints(new String(hintsString));
+                gameRoomRepository.save(gameRoom);
+                userProfileService.save(userProfile);
+                return new HintResponse(index, letter);
+            } else {
+                return new HintResponse();
+            }
+        }catch(Exception e){
+            return null;
+        }
+    }
+
     public GameRoomDto getAIGameRoom(User user){
         try {
             var userProfile = userProfileService.findByUser(user);
@@ -223,6 +259,7 @@ public class GameRoomService {
             if(userGameRoom.getStatus().equals(GameUserStatus.DRAWING)){
                 if(gameRoom.getWord() == null) {
                     gameRoom.setWord(word);
+                    gameRoom.setOpenHints(StringUtils.repeat("_", word.getTerm().length()));
                     return new GameRoomDto(gameRoomRepository.save(gameRoom));
                 }
             }

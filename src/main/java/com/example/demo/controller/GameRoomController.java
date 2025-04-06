@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.controller.domain.request.gameRoom.GameRoomRequest;
+import com.example.demo.controller.domain.response.HintResponse;
 import com.example.demo.controller.domain.response.MessageResponse;
 import com.example.demo.dto.GameRoomDto;
 import com.example.demo.dto.UserGameRoomDto;
@@ -44,9 +45,13 @@ public class GameRoomController {
     public ResponseEntity<List<UserGameRoomDto>> getWaitingList(@AuthenticationPrincipal User user){
         return ResponseEntity.ok(gameRoomService.getWaitingRoomList(user));
     }
-    @GetMapping("/find-free")
+    @PutMapping("/find-free")
     public ResponseEntity<GameRoomDto> findFreeGameRoom(@AuthenticationPrincipal User user){
         return ResponseEntity.ok(gameRoomService.findGameRoom(user));
+    }
+    @PutMapping("/{id}/get-hint")
+    public ResponseEntity<HintResponse> getHintInRoom(@AuthenticationPrincipal User user, @PathVariable("id") String id){
+        return ResponseEntity.ok(gameRoomService.getHintInRoom(user, id));
     }
     @PutMapping("/set-image")
     public ResponseEntity<MessageResponse> setImageInRoom(@AuthenticationPrincipal User user, @RequestBody GameRoomRequest request) {
@@ -56,6 +61,7 @@ public class GameRoomController {
     public ResponseEntity<GameRoomDto> setWordInRoom(@AuthenticationPrincipal User user, @RequestBody GameRoomRequest request){
         return ResponseEntity.ok(gameRoomService.setWordInRoom(user, request));
     }
+
     @PutMapping("/check-word-input")
     public ResponseEntity<GameRoomDto> checkWordInput(@AuthenticationPrincipal User user, @RequestBody GameRoomRequest request){
         return ResponseEntity.ok(gameRoomService.checkWord(user, request));
