@@ -41,7 +41,14 @@ public class GroupMemberService {
             return new ArrayList<>();
         }
     }
-
+    public GroupMember findOfficerGroupMemberByUserProfile(UserProfile userProfile){
+        return groupMemberRepository.findByUserProfileAndMemberRoleIn(userProfile, List.of(MemberRole.LEADER, MemberRole.OFFICER))
+                .orElseThrow(() -> new NotFoundException("Участник не найден."));
+    }
+    public GroupMember findByIdAndGroup(UUID id, Group group, Collection<MemberRole> collection){
+        return groupMemberRepository.findByIdAndGroupAndMemberRoleIn(id, group, collection)
+                .orElseThrow(() -> new NotFoundException("Заявка не найдена."));
+    }
     public void delete(GroupMember groupMember){
         groupMemberRepository.delete(groupMember);
     }

@@ -11,6 +11,6 @@ import java.util.UUID;
 
 public interface UserPictureRepository extends JpaRepository<UserPicture, UUID> {
     List<UserPicture> findAllByUserProfile(UserProfile userProfile);
-    List<UserPicture> findAllByCreateDateAfterOrderByLikesAsc(LocalDateTime createDate);
+    List<UserPicture> findAllByCreateDateAfterOrderByLikesDesc(LocalDateTime createDate);
     Optional<UserPicture> findByUserProfileAndId(UserProfile userProfile, UUID id);
 }

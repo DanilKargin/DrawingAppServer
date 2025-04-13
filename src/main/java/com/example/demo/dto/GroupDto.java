@@ -26,6 +26,6 @@ public class GroupDto {
         this.description = group.getDescription();
         this.logoId = group.getGroupLogo().getId().toString();
         this.type = group.getType().toString();
-        this.members = group.getMembers().stream().map(GroupMemberDto::new).collect(Collectors.toList());
+        //this.members = group.getMembers().stream().map(GroupMemberDto::new).collect(Collectors.toList());
     }
 }

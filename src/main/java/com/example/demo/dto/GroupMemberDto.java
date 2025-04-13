@@ -2,8 +2,10 @@ package com.example.demo.dto;
 
 import com.example.demo.entity.GroupMember;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
 public class GroupMemberDto {
     private String id;
     private String memberRole;

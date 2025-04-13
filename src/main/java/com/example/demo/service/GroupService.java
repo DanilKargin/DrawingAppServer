@@ -71,6 +71,20 @@ public class GroupService {
             return new GroupDto();
         }
     }
+    public Boolean getRequestGroupMemberByGroupId(User user, String groupId){
+        try {
+            var userProfile = userProfileService.findByUser(user);
+            var group = findGroupById(UUID.fromString(groupId));
+            var groupMemberOpt = groupMemberService.findByUserProfileAndGroup(userProfile, group);
+            if(groupMemberOpt.isPresent() && groupMemberOpt.get().getMemberRole().equals(MemberRole.NOT_CONFIRMED)){
+                return true;
+            }else{
+                return false;
+            }
+        }catch(Exception e){
+            return null;
+        }
+    }
     public void createLogo(GroupLogo logo){
         var groupLogo = GroupLogo.builder()
                 .image(logo.getImage())
@@ -100,7 +114,7 @@ public class GroupService {
                             .userProfile(userProfileService.save(userProfile))
                             .build();
                     var leader = groupMemberService.save(leaderMember);
-                    result.getMembers().add(leader);
+                    //result.getMembers().add(leader);
                     return new GroupDto(result);
                 }
             }else{
@@ -110,6 +124,26 @@ public class GroupService {
         return null;
     }
 
+    public GroupDto editGroup(User user, GroupRequest request){
+        try {
+            var userProfile = userProfileService.findByUser(user);
+            var logoOpt = groupLogoRepository.findById(UUID.fromString(request.getLogoId()));
+            var groupMember = groupMemberService.findGroupMemberByUserProfile(userProfile);
+            if (userProfile != null) {
+                if(groupMember.getMemberRole().equals(MemberRole.LEADER)){
+                    var group = groupMember.getGroup();
+                    logoOpt.ifPresent(group::setGroupLogo);
+                    group.setName(request.getName());
+                    group.setDescription(request.getDescription());
+                    group.setType(GroupType.valueOf(request.getType()));
+                    return new GroupDto(groupRepository.save(group));
+                }
+            }
+            return null;
+        }catch (Exception e){
+            return null;
+        }
+    }
     public MessageResponse joinGroup(User user, SearchGroupRequest request){
         try {
             var userProfile = userProfileService.findByUser(user);
@@ -163,13 +197,110 @@ public class GroupService {
         }
     }
 
+    public MessageResponse cancelRequestGroup(User user, SearchGroupRequest request){
+        try{
+            var userProfile = userProfileService.findByUser(user);
+            var group = findGroupById(UUID.fromString(request.getId()));
+            var groupMemberOpt = groupMemberService.findByUserProfileAndGroup(userProfile, group);
+            if(groupMemberOpt.isPresent()){
+                var groupMember = groupMemberOpt.get();
+                if(groupMember.getMemberRole().equals(MemberRole.NOT_CONFIRMED)) {
+                    groupMember.setMemberRole(MemberRole.EXCLUDED);
+                    groupMemberService.save(groupMember);
+                    return new MessageResponse("Заявка отменена.", "");
+                }
+            }
+            return new MessageResponse("", "Заявка не найдена.");
+        }catch(Exception e){
+            return new MessageResponse("", e.getMessage());
+        }
+    }
+
+    public MessageResponse acceptRequest(User user, String id){
+        try{
+            var userProfile = userProfileService.findByUser(user);
+            var groupMember = groupMemberService.findOfficerGroupMemberByUserProfile(userProfile);
+            var requestGroupMember = groupMemberService.findByIdAndGroup(UUID.fromString(id), groupMember.getGroup(), List.of(MemberRole.NOT_CONFIRMED));
+            requestGroupMember.setMemberRole(MemberRole.MEMBER);
+            groupMemberService.save(requestGroupMember);
+            groupChatWebSocketHandler.sendNotificationToGroup(groupMember.getGroup().getId().toString(), new MemberMessageRequest("Пользователь " + requestGroupMember.getUserProfile().getNickname() + " вступил в группу.", "", MessageType.NOTIFICATION.toString()));
+            return new MessageResponse("Пользователь принят.", "");
+        }catch (Exception e){
+            return new MessageResponse("", e.getMessage());
+        }
+    }
+    public MessageResponse rejectRequest(User user, String id){
+        try{
+            var userProfile = userProfileService.findByUser(user);
+            var groupMember = groupMemberService.findOfficerGroupMemberByUserProfile(userProfile);
+            var requestGroupMember = groupMemberService.findByIdAndGroup(UUID.fromString(id), groupMember.getGroup(), List.of(MemberRole.NOT_CONFIRMED));
+            requestGroupMember.setMemberRole(MemberRole.EXCLUDED);
+            groupMemberService.save(requestGroupMember);
+            return new MessageResponse("Пользователь отклонен.", "");
+        }catch (Exception e){
+            return new MessageResponse("", e.getMessage());
+        }
+    }
+    public MessageResponse excludeMember(User user, String id){
+        try{
+            var userProfile = userProfileService.findByUser(user);
+            var groupMember = groupMemberService.findOfficerGroupMemberByUserProfile(userProfile);
+            var requestGroupMember = groupMemberService.findByIdAndGroup(UUID.fromString(id), groupMember.getGroup(), List.of(MemberRole.MEMBER));
+            requestGroupMember.setMemberRole(MemberRole.EXCLUDED);
+            groupMemberService.save(requestGroupMember);
+            groupChatWebSocketHandler.sendNotificationToGroup(groupMember.getGroup().getId().toString(), new MemberMessageRequest("Пользователь " + requestGroupMember.getUserProfile().getNickname() + " исключен из группы.", "", MessageType.NOTIFICATION.toString()));
+            return new MessageResponse("Пользователь исключен.", "");
+        }catch (Exception e){
+            return new MessageResponse("", e.getMessage());
+        }
+    }
+    @Transactional
+    public MessageResponse upRoleMember(User user, String id){
+        try{
+            var userProfile = userProfileService.findByUser(user);
+            var groupMember = groupMemberService.findOfficerGroupMemberByUserProfile(userProfile);
+            GroupMember requestGroupMember;
+            if(groupMember.getMemberRole().equals(MemberRole.LEADER)) {
+                requestGroupMember = groupMemberService.findByIdAndGroup(UUID.fromString(id), groupMember.getGroup(), List.of(MemberRole.MEMBER, MemberRole.OFFICER));
+            }else{
+                requestGroupMember = groupMemberService.findByIdAndGroup(UUID.fromString(id), groupMember.getGroup(), List.of(MemberRole.MEMBER));
+            }
+            if(requestGroupMember.getMemberRole().equals(MemberRole.MEMBER)){
+                requestGroupMember.setMemberRole(MemberRole.OFFICER);
+            }else if (requestGroupMember.getMemberRole().equals(MemberRole.OFFICER)){
+                requestGroupMember.setMemberRole(MemberRole.LEADER);
+                groupMember.setMemberRole(MemberRole.OFFICER);
+            }
+            groupMemberService.save(requestGroupMember);
+            groupMemberService.save(groupMember);
+            return new MessageResponse("Пользователь повышен.", "");
+        }catch (Exception e){
+            return new MessageResponse("", e.getMessage());
+        }
+    }
+    public MessageResponse lowerRoleMember(User user, String id){
+        try{
+            var userProfile = userProfileService.findByUser(user);
+            var groupMember = groupMemberService.findOfficerGroupMemberByUserProfile(userProfile);
+            GroupMember requestGroupMember;
+            if(groupMember.getMemberRole().equals(MemberRole.LEADER)) {
+                requestGroupMember = groupMemberService.findByIdAndGroup(UUID.fromString(id), groupMember.getGroup(), List.of(MemberRole.OFFICER));
+                requestGroupMember.setMemberRole(MemberRole.MEMBER);
+                groupMemberService.save(requestGroupMember);
+                return new MessageResponse("Пользователь понижен.", "");
+            }else{
+                return new MessageResponse("", "Нет разрешения.");
+            }
+        }catch (Exception e){
+            return new MessageResponse("", e.getMessage());
+        }
+    }
     public MessageResponse quitFromGroup(User user){
         try {
             var userProfile = userProfileService.findByUser(user);
             var groupMember = groupMemberService.findGroupMemberByUserProfile(userProfile);
             if (groupMember.getMemberRole() == MemberRole.LEADER) {
-                var group = findGroupById(groupMember.getGroup().getId());
-
+                return new MessageResponse("", "Лидер не может покинуть группу.");
             }
             groupMember.setMemberRole(MemberRole.EXCLUDED);
             groupMemberService.save(groupMember);

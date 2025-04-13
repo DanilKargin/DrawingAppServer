@@ -38,7 +38,7 @@ public class UserPictureService {
 
     public List<UserPictureDto> getUserPicturesOrderByLike(){
 
-        return userPictureRepository.findAllByCreateDateAfterOrderByLikesAsc(
+        return userPictureRepository.findAllByCreateDateAfterOrderByLikesDesc(
                 LocalDateTime.now()
                     .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
                         .withHour(0)
@@ -47,7 +47,18 @@ public class UserPictureService {
                         .withNano(0))
                 .stream().map(UserPictureDto::new).collect(Collectors.toList());
     }
-
+    public Boolean likePicture(User user, String pictureId){
+        var userProfile = userProfileService.findByUser(user);
+        var userPictureOpt = userPictureRepository.findById(UUID.fromString(pictureId));
+        if(userPictureOpt.isPresent() && !userPictureOpt.get().getUserProfile().getId().equals(userProfile.getId())){
+            var userPicture = userPictureOpt.get();
+            userPicture.setLikes(userPicture.getLikes() + 1);
+            userPictureRepository.save(userPicture);
+            return true;
+        }else{
+            return false;
+        }
+    }
     public MessageResponse createPicture(User user, UserPictureRequest request){
         var userProfile = userProfileService.findByUser(user);
         List<UserPictureDto> userPictureList = getUserPictures(user);
