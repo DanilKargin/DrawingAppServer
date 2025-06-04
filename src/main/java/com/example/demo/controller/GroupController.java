@@ -67,11 +67,11 @@ public class GroupController {
         return ResponseEntity.ok(groupService.editGroup(user, request));
     }
 
-    /*@PostMapping("/create-logo")
+    @PostMapping("/create-logo")
     public ResponseEntity<String> createLogo(@RequestBody GroupLogo logo){
         groupService.createLogo(logo);
         return ResponseEntity.ok("Все гуд!");
-    }*/
+    }
     @PostMapping("/join")
     public ResponseEntity<MessageResponse> joinGroup(@AuthenticationPrincipal User user, @RequestBody SearchGroupRequest request){
         return ResponseEntity.ok(groupService.joinGroup(user, request));

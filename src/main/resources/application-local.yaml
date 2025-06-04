@@ -1,9 +1,9 @@
 spring:
   application.name: spring
   datasource:
-    url: ${db_url}
+    url: jdbc:postgresql://localhost:5432/DrawingAppDB
     username: postgres
-    password: "postgres"
+    password: "azor123"
     driverClassName: org.postgresql.Driver
   jpa:
     hibernate:

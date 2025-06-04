@@ -44,6 +44,10 @@ public class GameRoomService {
     private final String AI_SERVER_LINK = "http://localhost:8000";
     @Value("${gameConstants.gameRoom.hintPrice}")
     private int HINT_PRICE;
+    @Value("${gameConstants.gameRoom.winReward}")
+    private int WIN_REWARD;
+    @Value("${gameConstants.gameRoom.aiWinReward}")
+    private int AI_WIN_REWARD;
 
     public List<UserGameRoomDto> getReadyRoomList(User user){
         var userProfile = userProfileService.findByUser(user);
@@ -89,7 +93,6 @@ public class GameRoomService {
             var userProfile = userProfileService.findByUser(user);
             var gameRoomOpt = gameRoomRepository.findByStatusAndUserProfile(GameRoomStatus.AI, userProfile);
             GameRoom gameRoom;
-            if (userProfileService.subtractEnergy(userProfile)) {
                 var word = wordService.getRandomWordForAi();
                 if (gameRoomOpt.isPresent()) {
                     gameRoom = gameRoomOpt.get();
@@ -112,15 +115,18 @@ public class GameRoomService {
                     userGameRoomRepository.save(userGameRoom);
                 }
                 return new GameRoomDto(gameRoom);
-            } else {
-                return new GameRoomDto();
-            }
         }catch (Exception e){
             return null;
         }
     }
 
+    @Transactional
     public WordDto checkAIPredict(User user, GameRoomRequest request){
+
+        var gameRoom = getGameRoomById(UUID.fromString(request.getRoomId()));
+        if(gameRoom == null){
+            return null;
+        }
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -129,9 +135,10 @@ public class GameRoomService {
         body.add("file", new ByteArrayResource(request.getImage()) {
             @Override
             public String getFilename() {
-                return "image.png";  // Имя файла
+                return "image.png";
             }
         });
+        body.add("index", gameRoom.getWord().getAiIndex());
 
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
@@ -151,10 +158,13 @@ public class GameRoomService {
                     var gameRoomOpt = gameRoomRepository.findByStatusAndUserProfile(GameRoomStatus.AI, userProfile);
                     if (gameRoomOpt.isPresent()) {
                         if (gameRoomOpt.get().getWord().getId().equals(word.get().getId())) {
-                            //return new WordDto(word.get());
+                            userProfile.setCurrency(userProfile.getCurrency() + AI_WIN_REWARD);
+                            userProfileService.save(userProfile);
                         }
                         return new WordDto(word.get());
                     }
+                }else{
+                    return new WordDto();
                 }
             }catch(Exception e){
                 return null;
@@ -169,7 +179,6 @@ public class GameRoomService {
         var opponentOpt = gameRoomRepository.findFirstOldRoomByStatus(GameRoomStatus.FREE, GameUserStatus.WAITING, userProfile);
         GameRoom gameRoom = null;
         UserGameRoom userGameRoom;
-        if(userProfileService.subtractEnergy(userProfile)) {
             if (opponentOpt.isPresent()) {
                 var room = opponentOpt.get();
                 room.setStatus(GameRoomStatus.BUSY);
@@ -203,9 +212,6 @@ public class GameRoomService {
                 result.setDescription(null);
             }
             return result;
-        }else{
-            return new GameRoomDto();
-        }
     }
 
     public GameRoomDto getGameRoomById(User user, String roomId){
@@ -231,7 +237,7 @@ public class GameRoomService {
             var userProfile = userProfileService.findByUser(user);
             var gameRoom = getGameRoomById(UUID.fromString(request.getRoomId()));
             var userGameRoom = getUserGameRoomByUserAndRoom(userProfile, gameRoom);
-            var opponentGameRoom = userGameRoomRepository.findByUserProfileIsNotAndGameRoom(userProfile, gameRoom);
+            var opponentGameRoom = userGameRoomRepository.findFreeRoom(userProfile, gameRoom);
             if(userGameRoom.getStatus().equals(GameUserStatus.DRAWING)){
                 gameRoom.setImage(request.getImage());
                 gameRoom.setHealth(3);
@@ -282,20 +288,28 @@ public class GameRoomService {
                     if(word.isPresent() && gameRoom.getWord().getTerm().equalsIgnoreCase(word.get().getTerm())){
                         userGameRoom.setStatus(GameUserStatus.DRAWING);
                         userGameRoomRepository.save(userGameRoom);
+                        userProfile.setCurrency(userProfile.getCurrency() + WIN_REWARD);
+                        userProfileService.save(userProfile);
+                        var opponentOpt = userGameRoomRepository.findByUserProfileIsNotAndGameRoom(userProfile, gameRoom);
+                        if(opponentOpt.isPresent() && opponentOpt.get().getUserProfile() != null){
+                            var opponent = opponentOpt.get().getUserProfile();
+                            opponent.setCurrency(opponent.getCurrency() + WIN_REWARD);
+                            userProfileService.save(opponent);
+                        }
                         gameRoom.setWord(null);
                         gameRoom.setImage(null);
                     }else{
                         health-=1;
                         if(health <= 0){
                             userGameRoom.setStatus(GameUserStatus.DRAWING);
-                            userGameRoomRepository.save(userGameRoom);
+                            userGameRoom = userGameRoomRepository.save(userGameRoom);
                             gameRoom.setWord(null);
                             gameRoom.setImage(null);
                         }
                         gameRoom.setHealth(health);
                     }
                     gameRoomDto = new GameRoomDto(gameRoomRepository.save(gameRoom));
-                    if(userGameRoom.getGameRoom().equals(GameUserStatus.GUESSING)){
+                    if(userGameRoom.getStatus().equals(GameUserStatus.GUESSING)){
                         gameRoomDto.setTerm(null);
                         gameRoomDto.setDescription(null);
                     }

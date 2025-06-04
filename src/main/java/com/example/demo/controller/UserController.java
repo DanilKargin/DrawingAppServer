@@ -53,6 +53,10 @@ public class UserController {
     public ResponseEntity<MessageResponse> createPicture(@AuthenticationPrincipal User user, @RequestBody UserPictureRequest request){
         return ResponseEntity.ok(userPictureService.createPicture(user, request));
     }
+    @PutMapping("/picture/buy-storage")
+    public ResponseEntity<MessageResponse> buyPictureStorage(@AuthenticationPrincipal User user, @RequestParam int multiplier){
+        return ResponseEntity.ok(userProfileService.buyPictureStorageSize(user, multiplier));
+    }
     @PutMapping("/picture/{id}/set-like")
     public ResponseEntity<Boolean> likePicture(@AuthenticationPrincipal User user, @PathVariable("id") String id){
         return ResponseEntity.ok(userPictureService.likePicture(user, id));

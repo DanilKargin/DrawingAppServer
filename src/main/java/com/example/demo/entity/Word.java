@@ -27,4 +27,7 @@ public class Word {
 
     @Column(nullable = false)
     private String description;
+
+    @Column(name="ai_index")
+    private int aiIndex;
 }

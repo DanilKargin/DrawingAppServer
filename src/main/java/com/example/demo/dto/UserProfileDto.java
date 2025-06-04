@@ -9,7 +9,6 @@ public class UserProfileDto {
     private String id;
     private String nickname;
     private int currency;
-    private int energy;
     private int pictureMaxCount;
     private String email;
 
@@ -17,7 +16,6 @@ public class UserProfileDto {
         this.id = user.getId().toString();
         this.nickname = user.getNickname();
         this.currency = user.getCurrency();
-        this.energy = user.getEnergy();
         this.pictureMaxCount = user.getPictureMaxCount();
         this.email = user.getUser().getEmail();
     }

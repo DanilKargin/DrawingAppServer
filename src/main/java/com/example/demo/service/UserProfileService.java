@@ -20,11 +20,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserProfileService {
     private final UserProfileRepository userProfileRepository;
-
-    @Value("${gameConstants.energy.valueMax}")
-    private int ENERGY_MAX;
-    @Value("${gameConstants.energy.recoveryTime}")
-    private long ENERGY_RECOVERY_TIME;
+    @Value("${gameConstants.userPicture.deltaStorageSize}")
+    private int DELTA_STORAGE_SIZE;
+    @Value("${gameConstants.userPicture.deltaStoragePrice}")
+    private int DELTA_STORAGE_PRICE;
 
     public UserProfile save(UserProfile user) {
         return userProfileRepository.save(user);
@@ -40,7 +39,6 @@ public class UserProfileService {
         int number = rnd.nextInt(999999);
         var userProfile = UserProfile.builder()
                 .currency(1000)
-                .energy(ENERGY_MAX)
                 .pictureMaxCount(9)
                 .nickname("Игрок-" + String.format("%06d", number))
                 .user(user)
@@ -51,7 +49,6 @@ public class UserProfileService {
         var userProfileOpt = userProfileRepository.findByUser(user);
         if(userProfileOpt.isPresent()){
             var userProfile = userProfileOpt.get();
-            synchronizeEnergy(userProfile);
             return save(userProfile);
         }
         return null;
@@ -76,45 +73,28 @@ public class UserProfileService {
             return new MessageResponse("", "Никнейм не может быть пустым.");
         }
     }
-    @Transactional
-    public boolean subtractEnergy(UserProfile user){
-        var userProfileOpt = userProfileRepository.findById(user.getId());
+
+    public MessageResponse buyPictureStorageSize(User user, int multiplier){
+        var userProfileOpt = userProfileRepository.findByUser(user);
         if(userProfileOpt.isPresent()){
             var userProfile = userProfileOpt.get();
-            synchronizeEnergy(userProfile);
-            if(userProfile.getEnergy() <= 0){
-                return false;
-            }else if(userProfile.getEnergy() >= ENERGY_MAX){
-                userProfile.setEnergy(ENERGY_MAX - 1);
-                userProfile.setEnergyTime(LocalDateTime.now().plusMinutes(ENERGY_RECOVERY_TIME));
+            if(userProfile.getCurrency() >= DELTA_STORAGE_PRICE * multiplier){
+                userProfile.setCurrency(userProfile.getCurrency() - DELTA_STORAGE_PRICE * multiplier);
+                userProfile.setPictureMaxCount(userProfile.getPictureMaxCount() + DELTA_STORAGE_SIZE * multiplier);
+                save(userProfile);
+                return new MessageResponse("Количество мест увеличено.", "");
             }else{
-                userProfile.setEnergy(userProfile.getEnergy() - 1);
-                userProfile.setEnergyTime(userProfile.getEnergyTime().plusMinutes(ENERGY_RECOVERY_TIME));
+                return new MessageResponse("", "Недостаточно валюты!");
             }
-            save(userProfile);
-            return true;
+        }else{
+            return new MessageResponse("", "Профиля не существует!");
         }
-        return false;
     }
 
     public void deleteUserProfile(User user){
         var userProfile = userProfileRepository.findByUser(user);
         if(userProfile.isPresent()) {
             userProfileRepository.delete(userProfile.get());
-        }
-    }
-    private void synchronizeEnergy(UserProfile userProfile){
-        if(userProfile.getEnergyTime() != null && userProfile.getEnergy() < ENERGY_MAX){
-            if(userProfile.getEnergyTime().isBefore(LocalDateTime.now())){
-                userProfile.setEnergy(ENERGY_MAX);
-                userProfile.setEnergyTime(null);
-            }else{
-                double minutes = ChronoUnit.MINUTES.between(LocalDateTime.now(), userProfile.getEnergyTime());
-                int delta = (int)Math.floor(minutes / ENERGY_RECOVERY_TIME);
-                int energy = userProfile.getEnergy() + delta;
-                userProfile.setEnergy(energy < ENERGY_MAX ? energy : ENERGY_MAX);
-                userProfile.setEnergyTime(userProfile.getEnergyTime().minusMinutes(delta * ENERGY_RECOVERY_TIME));
-            }
         }
     }
 }

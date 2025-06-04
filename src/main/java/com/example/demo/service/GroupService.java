@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.webjars.NotFoundException;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -127,7 +128,12 @@ public class GroupService {
     public GroupDto editGroup(User user, GroupRequest request){
         try {
             var userProfile = userProfileService.findByUser(user);
-            var logoOpt = groupLogoRepository.findById(UUID.fromString(request.getLogoId()));
+            Optional<GroupLogo> logoOpt;
+            if(request.getLogoId() != null) {
+                logoOpt = groupLogoRepository.findById(UUID.fromString(request.getLogoId()));
+            }else{
+                logoOpt = Optional.empty();
+            }
             var groupMember = groupMemberService.findGroupMemberByUserProfile(userProfile);
             if (userProfile != null) {
                 if(groupMember.getMemberRole().equals(MemberRole.LEADER)){
@@ -152,7 +158,8 @@ public class GroupService {
                 var groupMemberOpt = groupMemberService.findByUserProfileAndGroup(userProfile, group);
                 if (groupMemberOpt.isEmpty()) {
                     if (group.getType() == GroupType.FREE_ENTRY) {
-                        if(group.getMembers().size() < MAX_MEMBER_COUNT) {
+                        var groupMembers = groupMemberService.findGroupMembersByGroupAndMemberRoles(group, List.of(MemberRole.MEMBER, MemberRole.OFFICER, MemberRole.LEADER));
+                        if(groupMembers.size() < MAX_MEMBER_COUNT) {
                             var groupMember = GroupMember.builder()
                                     .group(group)
                                     .memberRole(MemberRole.MEMBER)

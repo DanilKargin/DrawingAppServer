@@ -38,7 +38,4 @@ public class Group {
     @ManyToOne
     @JoinColumn(name = "group_logo_id", nullable = false)
     private GroupLogo groupLogo;
-
-    @OneToMany(mappedBy = "group", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
-    private List<GroupMember> members = new ArrayList<>();
 }

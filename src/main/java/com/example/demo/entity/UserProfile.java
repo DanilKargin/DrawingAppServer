@@ -29,12 +29,6 @@ public class UserProfile {
     @Column(name="picture_max_count", nullable = false)
     private int pictureMaxCount;
 
-    @Column(nullable = false)
-    private int energy;
-
-    @Column(name="energy_time")
-    private LocalDateTime energyTime;
-
     @OneToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
